@@ -74,10 +74,7 @@ void setup()
 	mem_map["ntp_sync_interval"] = 388;
 	mem_map["non_init"] = 500;
 
-	Serial.println("");
-	Serial.println("");
-	Serial.println("");
-	Serial.println(" Nixie Tap is booting!");
+	Serial.println("\r\n\r\n\r\nNixie Tap is booting!");
 
 	// Set WiFi station mode settings.
 	WiFi.mode(WIFI_STA);
