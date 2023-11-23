@@ -69,7 +69,7 @@ void setup()
 	Serial.println("");
 	Serial.println("");
 	Serial.println("");
-	Serial.println("Nixie Tap is booting!");
+	Serial.println(" Nixie Tap is booting!");
 
 	// Set WiFi station mode settings.
 	WiFi.mode(WIFI_STA);
