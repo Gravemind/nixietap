@@ -31,7 +31,6 @@ class NixieAPI {
 
     public:
 	NixieAPI();
-	void applyKey(String key, uint8_t selectAPI);
 	String getSurroundingWiFiJson();
 
 	String getPublicIP();

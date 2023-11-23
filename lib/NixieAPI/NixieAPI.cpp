@@ -5,42 +5,6 @@ NixieAPI::NixieAPI()
 {
 }
 
-void NixieAPI::applyKey(String key, uint8_t selectAPI)
-{
-#ifdef DEBUG
-	Serial.println("---------------------------------------------------------------------------------------------");
-#endif // DEBUG
-	switch (selectAPI) {
-	case 0:
-		timezonedbKey = key;
-#ifdef DEBUG
-		Serial.println("applyKey successful, timezonedb key is: " + timezonedbKey);
-#endif // DEBUG
-		break;
-	case 1:
-		ipStackKey = key;
-#ifdef DEBUG
-		Serial.println("applyKey successful, ipstack key is:  " + ipStackKey);
-#endif // DEBUG
-		break;
-	case 2:
-		googleLocKey = key;
-#ifdef DEBUG
-		Serial.println("applyKey successful, Google location key is:  " + googleLocKey);
-#endif // DEBUG
-		break;
-	case 3:
-		googleTimeZoneKey = key;
-#ifdef DEBUG
-		Serial.println("applyKey successful, Google timezone key is:  " + googleTimeZoneKey);
-#endif // DEBUG
-		break;
-	default:
-		Serial.println("Unknown value of selectAPI!");
-		break;
-	}
-}
-
 String NixieAPI::MACtoString(uint8_t *macAddress)
 {
 	char macStr[18] = { 0 };
