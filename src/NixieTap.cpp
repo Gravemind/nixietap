@@ -204,36 +204,46 @@ void processSyncEvent(NTPSyncEvent_t ntpEvent)
 void readParameters()
 {
 	Serial.println("Reading saved parameters from EEPROM.");
+
 	int EEaddress = mem_map["SSID"];
 	EEPROM.get(EEaddress, SSID);
-	Serial.println("SSID IS:" + (String)SSID);
+	Serial.println("SSID:" + (String)SSID);
+
 	EEaddress = mem_map["password"];
 	EEPROM.get(EEaddress, password);
-	Serial.println("PW IS:" + (String)password);
+	Serial.println("password:" + (String)password);
+
 	EEaddress = mem_map["target_ssid"];
 	EEPROM.get(EEaddress, target_SSID);
-	Serial.println("Target SSID IS:" + (String)target_SSID);
+	Serial.println("target_ssid:" + (String)target_SSID);
+
 	EEaddress = mem_map["target_pw"];
 	EEPROM.get(EEaddress, target_pw);
-	Serial.println("Target PW IS:" + (String)target_pw);
+	Serial.println("target_pw:" + (String)target_pw);
+
 	EEaddress = mem_map["manual_time_flag"];
 	EEPROM.get(EEaddress, manual_time_flag);
-	Serial.println("MANUAL TIME FLAG IS:" + (String)manual_time_flag);
+	Serial.println("manual_time_flag:" + (String)manual_time_flag);
+
 	EEaddress = mem_map["enable_date"];
 	EEPROM.get(EEaddress, enable_date);
-	Serial.println("ENABLE DATE IS:" + (String)enable_date);
+	Serial.println("enable_date:" + (String)enable_date);
+
 	EEaddress = mem_map["enable_time"];
 	EEPROM.get(EEaddress, enable_time);
-	Serial.println("ENABLE TIME IS:" + (String)enable_time);
+	Serial.println("enable_time:" + (String)enable_time);
+
 	EEaddress = mem_map["enable_24h"];
 	EEPROM.get(EEaddress, enable_24h);
-	Serial.println("24H IS:" + (String)enable_24h);
+	Serial.println("enable_24h:" + (String)enable_24h);
+
 	EEaddress = mem_map["enable_dst"];
 	EEPROM.get(EEaddress, enable_DST);
-	Serial.println("ENABLE DST IS:" + (String)enable_DST);
+	Serial.println("enable_dst:" + (String)enable_DST);
+
 	EEaddress = mem_map["offset"];
 	EEPROM.get(EEaddress, offset);
-	Serial.println("OFFSET IS:" + (String)offset);
+	Serial.println("offset:" + (String)offset);
 }
 
 void updateParameters()
@@ -458,6 +468,8 @@ void readAndParseSerial()
 			Serial.println("DST: 0");
 			Serial.println("Time zone offset: 120min");
 			resetEepromToDefault();
+		} else if (serialCommand.equals("read\r")) {
+			readParameters();
 		} else {
 			Serial.println("Unknown command.");
 		}
@@ -467,26 +479,37 @@ void readAndParseSerial()
 void resetEepromToDefault()
 {
 	EEPROM.begin(512);
+
 	int EEaddress = mem_map["SSID"];
 	EEPROM.put(EEaddress, "NixieTap");
+
 	EEaddress = mem_map["password"];
 	EEPROM.put(EEaddress, "NixieTap");
+
 	EEaddress = mem_map["target_ssid"];
 	EEPROM.put(EEaddress, "");
+
 	EEaddress = mem_map["target_pw"];
 	EEPROM.put(EEaddress, "");
+
 	EEaddress = mem_map["manual_time_flag"];
 	EEPROM.put(EEaddress, 1);
+
 	EEaddress = mem_map["enable_date"];
 	EEPROM.put(EEaddress, 1);
+
 	EEaddress = mem_map["enable_time"];
 	EEPROM.put(EEaddress, 1);
+
 	EEaddress = mem_map["enable_dst"];
 	EEPROM.put(EEaddress, 0);
+
 	EEaddress = mem_map["enable_24h"];
 	EEPROM.put(EEaddress, 0);
+
 	EEaddress = mem_map["offset"];
 	EEPROM.put(EEaddress, 0);
+
 	EEPROM.commit();
 }
 
