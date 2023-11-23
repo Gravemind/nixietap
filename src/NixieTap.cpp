@@ -129,7 +129,7 @@ void loop()
 	}
 
 	// State machine
-	if (state > 3)
+	if (state > 1)
 		state = 0;
 
 	// Slot 0 - time
