@@ -182,7 +182,6 @@ void startPortalManually()
 	nixieTap.write(10, 10, 10, 10, 0);
 	disableSecDot(); // If the dots are not disabled, precisely the RTC_IRQ_PIN interrupt, ConfigPortal will chrach.
 	movingDot.attach(0.2, scrollDots);
-	Serial.println("---------------------------------------------------------------------------------------------");
 	wifiManager.setConfigPortalTimeout(1800);
 	// This will run a new config portal if the SSID and PW are valid.
 	if (!wifiManager.startConfigPortal(SSID, password)) {
@@ -198,7 +197,6 @@ void startPortalManually()
 
 void processSyncEvent(NTPSyncEvent_t ntpEvent)
 {
-	Serial.println("---------------------------------------------------------------------------------------------");
 	// When syncEventTriggered is triggered, through NTPClient, Nixie checks if NTP time is received.
 	// If NTP time is received, Nixie starts synchronization of RTC time with received NTP time and stops NTPClinet from sending new requests.
 
@@ -283,7 +281,6 @@ void readParameters()
 
 void updateParameters()
 {
-	Serial.println("---------------------------------------------------------------------------------------------");
 	Serial.println("Synchronization of parameters started.");
 	EEPROM.begin(512); // Number of bytes to allocate for parameters.
 	int EEaddress;
@@ -605,9 +602,7 @@ void firstRunInit()
 	EEPROM.begin(512);
 	EEPROM.get(mem_map["non_init"], notInitialized);
 	if (notInitialized) {
-		Serial.println("------------------------------------------");
 		Serial.println("Performing first run initialization...");
-		Serial.println("------------------------------------------");
 		resetEepromToDefault();
 	}
 }
