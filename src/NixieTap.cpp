@@ -105,12 +105,13 @@ void loop()
 	// Mandatory functions to be executed every cycle
 	t = now(); // update date and time variable
 
-	// If time is configured to be set semi-auto or auto and NixiTap is just started, the NTP request is created.
+	// If time is configured to be set semi-auto or auto and NixieTap is just started, the NTP client is started.
 	if (manual_time_flag == 0 && wifiFirstConnected && WiFi.status() == WL_CONNECTED) {
 		NTP.onNTPSyncEvent([](NTPSyncEvent_t event) {
 			ntpEvent = event;
 			syncEventTriggered = true;
 		});
+		NTP.setInterval(63); /* XXX: Remove this after testing */
 		NTP.begin();
 		wifiFirstConnected = false;
 	}
@@ -160,10 +161,10 @@ void startPortalManually()
 void processSyncEvent(NTPSyncEvent_t ntpEvent)
 {
 	// When syncEventTriggered is triggered, through NTPClient, Nixie checks if NTP time is received.
-	// If NTP time is received, Nixie starts synchronization of RTC time with received NTP time and stops NTPClinet from sending new requests.
+	// If NTP time is received, Nixie starts synchronization of RTC time with received NTP time.
 
 	if (ntpEvent < 0) {
-		Serial.print("Time Sync error: ");
+		Serial.print("Time sync error: ");
 		if (ntpEvent == noResponse) {
 			Serial.println("NTP server not reachable.");
 		} else if (ntpEvent == invalidAddress) {
@@ -173,21 +174,18 @@ void processSyncEvent(NTPSyncEvent_t ntpEvent)
 		} else if (ntpEvent == responseError) {
 			Serial.println("NTP response error");
 		}
-		Serial.println("Synchronization will be attempted again after 15 seconds.");
-		Serial.println("If the time is not synced after 2 minutes, please restart Nixie Tap and try again!");
-		Serial.println("If restart does not help. There might be a problem with the NTP server or your WiFi connection. You can set the time manually.");
 	} else {
-		if (NTP.getLastNTPSync() != 0) {
-			Serial.print("NTP time is obtained: ");
-			Serial.println(NTP.getLastNTPSync());
+		if (ntpEvent == timeSyncd && NTP.SyncStatus()) {
+			time_t ntp_time = NTP.getLastNTPSync();
+			Serial.print ("Got NTP time: ");
+			Serial.println(ntp_time);
 			if (!manual_time_flag) {
-				Serial.println("Auto time adjustment started!");
-				// Collect NTP time, put it in RTC and stop NTP synchronization.
-				RTC.set(NTP.getLastNTPSync());
-				NTP.stop();
+				RTC.set(ntp_time);
 				setSyncProvider(RTC.get);
 				wifiFirstConnected = false;
 			}
+		} else {
+			Serial.println("Received non-error NTP sync event but time is not synced");
 		}
 	}
 }
