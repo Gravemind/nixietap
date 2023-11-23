@@ -32,9 +32,6 @@ bool syncEventTriggered = false; // True if a time event has been triggered.
 uint8_t configButton = 0;
 volatile uint8_t state = 0, dotPosition = 0b10;
 char buttonCounter;
-uint16_t buttonPressedCounter;
-bool buttonPressed = false;
-String loc = "";
 Ticker movingDot; // Initializing software timer interrupt called movingDot.
 NTPSyncEvent_t ntpEvent; // Last triggered event.
 WiFiManager wifiManager;
@@ -42,7 +39,6 @@ time_t t;
 String serialCommand = "";
 
 uint8 timeRefreshFlag;
-uint8 dateRefreshFlag;
 
 char _time[6] = "00:00";
 char date[11] = "1970-01-01";
