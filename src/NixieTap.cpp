@@ -9,9 +9,9 @@
 #include <Ticker.h>
 #include <map>
 
-ICACHE_RAM_ATTR void irq_1Hz_int(); // Interrupt function for changing the dot state every 1 second.
-ICACHE_RAM_ATTR void touchButtonPressed(); // Interrupt function when button is pressed.
-ICACHE_RAM_ATTR void scrollDots(); // Interrupt function for scrolling dots.
+IRAM_ATTR void irq_1Hz_int(); // Interrupt function for changing the dot state every 1 second.
+IRAM_ATTR void touchButtonPressed(); // Interrupt function when button is pressed.
+IRAM_ATTR void scrollDots(); // Interrupt function for scrolling dots.
 void processSyncEvent(NTPSyncEvent_t ntpEvent);
 void enableSecDot();
 void disableSecDot();
