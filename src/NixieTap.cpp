@@ -64,6 +64,9 @@ void setup()
 	mem_map["enable_24h"] = 387;
 	mem_map["non_init"] = 500;
 
+	Serial.println("");
+	Serial.println("");
+	Serial.println("");
 	Serial.println("Nixie Tap is booting!");
 
 	// Start WiFi in station mode.
