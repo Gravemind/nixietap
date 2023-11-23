@@ -71,8 +71,9 @@ void setup()
 	Serial.println("");
 	Serial.println("Nixie Tap is booting!");
 
-	// Start WiFi in station mode.
+	// Set WiFi station mode settings.
 	WiFi.mode(WIFI_STA);
+	WiFi.hostname(NixieTap);
 
 	// Progress bar: 25%.
 	nixieTap.write(10, 10, 10, 10, 0b10);
@@ -114,7 +115,6 @@ void setup()
 	if (target_SSID[0] != '\0' && target_pw[0] != '\0') {
 		Serial.print("Connecting to Wi-Fi access point: ");
 		Serial.println(target_SSID);
-		wifiManager.setHostname(NixieTap);
 		wifiManager.connectWifi(target_SSID, target_pw);
 	}
 
