@@ -138,6 +138,7 @@ void loop()
 			syncEventTriggered = true;
 		});
 		NTP.setInterval(63); /* XXX: Remove this after testing */
+		Serial.println("Starting NTP client.");
 		NTP.begin();
 		wifiFirstConnected = false;
 	}
@@ -382,6 +383,7 @@ void updateTime()
 				ntpEvent = event;
 				syncEventTriggered = true;
 			});
+			Serial.println("Starting NTP client.");
 			NTP.begin();
 			wifiFirstConnected = false;
 		} else {
