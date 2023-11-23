@@ -133,7 +133,6 @@ void loop()
 
 	// If time is configured to be set semi-auto or auto and NixieTap is just started, the NTP client is started.
 	if (manual_time_flag == 0 && wifiFirstConnected && WiFi.status() == WL_CONNECTED) {
-		WiFi.printDiag(Serial);
 		NTP.onNTPSyncEvent([](NTPSyncEvent_t event) {
 			ntpEvent = event;
 			syncEventTriggered = true;
@@ -370,7 +369,6 @@ void updateTime()
 			setSyncProvider(RTC.get);
 			Serial.println("Manually entered date and time saved!");
 		} else if (WiFi.status() == WL_CONNECTED) {
-			WiFi.printDiag(Serial);
 			Serial.println("NixieTap is auto and connected, setting time to NTP!");
 			NTP.onNTPSyncEvent([](NTPSyncEvent_t event) {
 				ntpEvent = event;
