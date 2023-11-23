@@ -49,9 +49,7 @@ char target_pw[50] = "none";
 uint8 enable_time = 1;
 uint8 enable_date = 1;
 uint8 manual_time_flag = 1;
-uint8 enable_DST = 0;
 uint8 enable_24h = 1;
-int16_t offset = 0;
 
 std::map<String, int> mem_map;
 
@@ -64,9 +62,7 @@ void setup()
 	mem_map["manual_time_flag"] = 381;
 	mem_map["enable_date"] = 382;
 	mem_map["enable_time"] = 383;
-	mem_map["enable_dst"] = 386;
 	mem_map["enable_24h"] = 387;
-	mem_map["offset"] = 388;
 	mem_map["non_init"] = 500;
 	// This line prevents the ESP from making spurious WiFi networks (ESP_XXXXX)
 	WiFi.mode(WIFI_STA);
@@ -187,7 +183,7 @@ void processSyncEvent(NTPSyncEvent_t ntpEvent)
 			if (!manual_time_flag) {
 				Serial.println("Auto time adjustment started!");
 				// Collect NTP time, put it in RTC and stop NTP synchronization.
-				RTC.set(NTP.getLastNTPSync() + offset * 60 + enable_DST * 60 * 60);
+				RTC.set(NTP.getLastNTPSync());
 				NTP.stop();
 				setSyncProvider(RTC.get);
 				wifiFirstConnected = false;
@@ -231,14 +227,6 @@ void readParameters()
 	EEaddress = mem_map["enable_24h"];
 	EEPROM.get(EEaddress, enable_24h);
 	Serial.println("enable_24h:" + (String)enable_24h);
-
-	EEaddress = mem_map["enable_dst"];
-	EEPROM.get(EEaddress, enable_DST);
-	Serial.println("enable_dst:" + (String)enable_DST);
-
-	EEaddress = mem_map["offset"];
-	EEPROM.get(EEaddress, offset);
-	Serial.println("offset:" + (String)offset);
 }
 
 void updateParameters()
@@ -294,12 +282,6 @@ void updateParameters()
 		enable_24h = new_enable_24h;
 		EEPROM.put(EEaddress, enable_24h);
 	}
-	uint8_t new_enable_dst = (uint8_t)wifiManager.nixie_params.count("dst");
-	if (new_enable_dst != enable_DST) {
-		EEaddress = mem_map["enable_dst"];
-		enable_DST = new_enable_dst;
-		EEPROM.put(EEaddress, enable_DST);
-	}
 	if (wifiManager.nixie_params.count("setTimeManuallyFlag") == 1) {
 		uint8_t new_manual_time_flag = atoi(wifiManager.nixie_params["setTimeManuallyFlag"].c_str());
 		if (new_manual_time_flag != manual_time_flag) {
@@ -309,14 +291,6 @@ void updateParameters()
 		}
 		manual_time_flag = new_manual_time_flag;
 		timeRefreshFlag = 1;
-	}
-	if (wifiManager.nixie_params.count("offset") == 1) {
-		int16_t new_offset = atoi(wifiManager.nixie_params["offset"].c_str());
-		if (new_offset != offset) {
-			EEaddress = mem_map["offset"];
-			offset = new_offset;
-			EEPROM.put(EEaddress, offset);
-		}
 	}
 	if (wifiManager.nixie_params.count("time") == 1) {
 		const char *new_time = wifiManager.nixie_params["time"].c_str();
@@ -460,8 +434,6 @@ void readAndParseSerial()
 			Serial.println("Enabled display modes: time and date");
 			Serial.println("Disabled display modes: other");
 			Serial.println("Operation mode: semi-auto");
-			Serial.println("DST: 0");
-			Serial.println("Time zone offset: 120min");
 			resetEepromToDefault();
 		} else if (serialCommand.equals("read\r")) {
 			readParameters();
@@ -496,13 +468,7 @@ void resetEepromToDefault()
 	EEaddress = mem_map["enable_time"];
 	EEPROM.put(EEaddress, 1);
 
-	EEaddress = mem_map["enable_dst"];
-	EEPROM.put(EEaddress, 0);
-
 	EEaddress = mem_map["enable_24h"];
-	EEPROM.put(EEaddress, 0);
-
-	EEaddress = mem_map["offset"];
 	EEPROM.put(EEaddress, 0);
 
 	EEPROM.commit();
