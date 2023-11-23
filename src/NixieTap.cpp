@@ -44,8 +44,8 @@ char _time[6] = "00:00";
 char date[11] = "1970-01-01";
 char SSID[50] = "NixieTap";
 char password[50] = "nixietap";
-char target_SSID[50] = "none";
-char target_pw[50] = "none";
+char target_SSID[50] = "\0";
+char target_pw[50] = "\0";
 uint8 enable_time = 1;
 uint8 enable_date = 1;
 uint8 manual_time_flag = 1;
@@ -87,6 +87,12 @@ void setup()
 
 	setSyncProvider(RTC.get); // the function to get the time from the RTC
 	enableSecDot();
+
+	// Connect to WiFi
+	if (target_SSID[0] != '\0' && target_pw[0] != '\0') {
+		wifiManager.connectWifi(target_SSID, target_pw);
+	}
+
 	// Serial debug message
 	if (timeStatus() != timeSet)
 		Serial.println("Unable to sync with the RTC!");
