@@ -25,7 +25,7 @@ void resetEepromToDefault();
 void readButton();
 void firstRunInit();
 
-uint8_t fwVersion = 1.1;
+uint8_t fwVersion = 0;
 volatile bool dot_state = LOW;
 bool stopDef = false, secDotDef = false;
 bool wifiFirstConnected = true;
