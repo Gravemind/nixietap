@@ -18,7 +18,6 @@ void disableSecDot();
 void startPortalManually();
 void updateParameters();
 void readParameters();
-void weatherRefresh();
 void updateTime();
 void readAndParseSerial();
 void resetEepromToDefault();
@@ -32,18 +31,16 @@ bool wifiFirstConnected = true;
 bool syncEventTriggered = false; // True if a time event has been triggered.
 
 uint8_t configButton = 0;
-volatile uint8_t state = 0, dotPosition = 0b10, weatherRefreshFlag = 1;
+volatile uint8_t state = 0, dotPosition = 0b10;
 char buttonCounter;
 uint16_t buttonPressedCounter;
 bool buttonPressed = false;
-String temperature = "", loc = "";
-Ticker movingDot, temperatureRefresh; // Initializing software timer interrupt called movingDot.
+String loc = "";
+Ticker movingDot; // Initializing software timer interrupt called movingDot.
 NTPSyncEvent_t ntpEvent; // Last triggered event.
 WiFiManager wifiManager;
 time_t t;
 String serialCommand = "";
-
-time_t last_temp;
 
 uint8 timeRefreshFlag;
 uint8 dateRefreshFlag;
@@ -56,14 +53,10 @@ char target_SSID[50] = "none";
 char target_pw[50] = "none";
 uint8 enable_time = 1;
 uint8 enable_date = 1;
-uint8 enable_temp = 0;
 uint8 manual_time_flag = 1;
 uint8 enable_DST = 0;
-uint8 weather_format = 0;
 uint8 enable_24h = 1;
 int16_t offset = 0;
-char weather_key[50];
-char weather_id[50];
 
 std::map<String, int> mem_map;
 
@@ -73,13 +66,9 @@ void setup()
 	mem_map["password"] = 50;
 	mem_map["target_ssid"] = 100;
 	mem_map["target_pw"] = 150;
-	mem_map["weather_key"] = 200;
-	mem_map["weather_format"] = 250;
-	mem_map["weather_id"] = 251;
 	mem_map["manual_time_flag"] = 381;
 	mem_map["enable_date"] = 382;
 	mem_map["enable_time"] = 383;
-	mem_map["enable_temp"] = 384;
 	mem_map["enable_dst"] = 386;
 	mem_map["enable_24h"] = 387;
 	mem_map["offset"] = 388;
@@ -155,24 +144,6 @@ void loop()
 	} else if (!enable_date && state == 1)
 		state++;
 
-	// Slot 3 - temperature
-	if (state == 3 && enable_temp) {
-		if (weather_key[0] != '\0') {
-			if (weatherRefreshFlag) {
-				weatherRefreshFlag = 0;
-				temperature = nixieTapAPI.getTempAtMyLocation(weather_id, weather_format);
-				last_temp = now();
-			}
-			// Checking local temp every 5 minutes
-			if (now() - last_temp >= 300) {
-				weatherRefreshFlag = 1;
-			}
-			nixieTap.writeNumber(temperature, 0);
-		} else
-			state++;
-	} else if (!enable_temp && state == 3)
-		state++;
-
 	// Here you can add new functions for displaying numbers on NixieTap, just follow the basic writing principle from above.
 }
 
@@ -245,15 +216,6 @@ void readParameters()
 	EEaddress = mem_map["target_pw"];
 	EEPROM.get(EEaddress, target_pw);
 	Serial.println("Target PW IS:" + (String)target_pw);
-	EEaddress = mem_map["weather_key"];
-	EEPROM.get(EEaddress, weather_key);
-	Serial.println("WEATHER KEY IS:" + (String)weather_key);
-	EEaddress = mem_map["weather_id"];
-	EEPROM.get(EEaddress, weather_id);
-	Serial.println("WEATHER ID IS:" + (String)weather_id);
-	EEaddress = mem_map["weather_format"];
-	EEPROM.get(EEaddress, weather_format);
-	Serial.println("WEATHER FORMAT IS:" + (String)weather_format);
 	EEaddress = mem_map["manual_time_flag"];
 	EEPROM.get(EEaddress, manual_time_flag);
 	Serial.println("MANUAL TIME FLAG IS:" + (String)manual_time_flag);
@@ -266,17 +228,12 @@ void readParameters()
 	EEaddress = mem_map["enable_24h"];
 	EEPROM.get(EEaddress, enable_24h);
 	Serial.println("24H IS:" + (String)enable_24h);
-	EEaddress = mem_map["enable_temp"];
-	EEPROM.get(EEaddress, enable_temp);
-	Serial.println("ENABLE TEMP IS:" + (String)enable_temp);
 	EEaddress = mem_map["enable_dst"];
 	EEPROM.get(EEaddress, enable_DST);
 	Serial.println("ENABLE DST IS:" + (String)enable_DST);
 	EEaddress = mem_map["offset"];
 	EEPROM.get(EEaddress, offset);
 	Serial.println("OFFSET IS:" + (String)offset);
-
-	nixieTapAPI.applyKey(weather_key, 4);
 }
 
 void updateParameters()
@@ -314,34 +271,6 @@ void updateParameters()
 			}
 		}
 	}
-	if (wifiManager.nixie_params.count("weather_api") == 1) {
-		const char *new_weather_key = wifiManager.nixie_params["weather_api"].c_str();
-		if (new_weather_key[0] != '\0' and new_weather_key != weather_key) {
-			EEaddress = mem_map["weather_key"];
-			strcpy(weather_key, new_weather_key);
-			EEPROM.put(EEaddress, weather_key);
-			nixieTapAPI.applyKey(weather_key, 4);
-			weatherRefreshFlag = 1;
-		}
-	}
-	if (wifiManager.nixie_params.count("weather_id") == 1) {
-		const char *new_weather_id = wifiManager.nixie_params["weather_id"].c_str();
-		if (new_weather_id[0] != '\0' and new_weather_id != weather_id) {
-			EEaddress = mem_map["weather_id"];
-			strcpy(weather_id, new_weather_id);
-			EEPROM.put(EEaddress, weather_id);
-			weatherRefreshFlag = 1;
-		}
-	}
-	if (wifiManager.nixie_params.count("weatherFormat") == 1) {
-		uint8_t user_input_weather_format = atoi(wifiManager.nixie_params["weatherFormat"].c_str());
-		if (user_input_weather_format != weather_format) {
-			weather_format = user_input_weather_format;
-			EEaddress = mem_map["weather_format"];
-			EEPROM.put(EEaddress, weather_format);
-			weatherRefreshFlag = 1;
-		}
-	}
 	uint8_t new_enable_date = (uint8_t)wifiManager.nixie_params.count("enableDate");
 	if (new_enable_date != enable_date) {
 		EEaddress = mem_map["enable_date"];
@@ -359,12 +288,6 @@ void updateParameters()
 		EEaddress = mem_map["enable_24h"];
 		enable_24h = new_enable_24h;
 		EEPROM.put(EEaddress, enable_24h);
-	}
-	uint8_t new_enable_temp = (uint8_t)wifiManager.nixie_params.count("enableTemp");
-	if (new_enable_temp != enable_temp) {
-		EEaddress = mem_map["enable_temp"];
-		enable_temp = new_enable_temp;
-		EEPROM.put(EEaddress, enable_temp);
 	}
 	uint8_t new_enable_dst = (uint8_t)wifiManager.nixie_params.count("dst");
 	if (new_enable_dst != enable_DST) {
@@ -409,10 +332,6 @@ void updateParameters()
 	EEPROM.put(EEaddress, 0);
 
 	EEPROM.commit();
-	if (enable_temp) {
-		temperatureRefresh.attach(3600, weatherRefresh);
-	} else
-		temperatureRefresh.detach();
 	wifiManager.nixie_params.clear();
 	Serial.println("Synchronization of parameters completed!");
 }
@@ -523,11 +442,6 @@ void touchButtonPressed()
 	nixieTap.setAnimation(true);
 }
 
-void weatherRefresh()
-{
-	enable_temp = 1;
-}
-
 void readAndParseSerial()
 {
 	if (Serial.available()) {
@@ -561,20 +475,12 @@ void resetEepromToDefault()
 	EEPROM.put(EEaddress, "");
 	EEaddress = mem_map["target_pw"];
 	EEPROM.put(EEaddress, "");
-	EEaddress = mem_map["weather_key"];
-	EEPROM.put(EEaddress, "");
-	EEaddress = mem_map["weather_id"];
-	EEPROM.put(EEaddress, "");
-	EEaddress = mem_map["weather_format"];
-	EEPROM.put(EEaddress, 0);
 	EEaddress = mem_map["manual_time_flag"];
 	EEPROM.put(EEaddress, 1);
 	EEaddress = mem_map["enable_date"];
 	EEPROM.put(EEaddress, 1);
 	EEaddress = mem_map["enable_time"];
 	EEPROM.put(EEaddress, 1);
-	EEaddress = mem_map["enable_temp"];
-	EEPROM.put(EEaddress, 0);
 	EEaddress = mem_map["enable_dst"];
 	EEPROM.put(EEaddress, 0);
 	EEaddress = mem_map["enable_24h"];

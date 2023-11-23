@@ -22,7 +22,6 @@ class NixieAPI {
 	String ipStackKey = "0"; // You can get your key here: https://ipstack.com/
 	String googleLocKey = "0"; // You can get your key here: https://developers.google.com/maps/documentation/geolocation/get-api-key
 	String googleTimeZoneKey = "0"; // You can get your key here: https://developers.google.com/maps/documentation/timezone/get-api-key
-	String openWeaterMapKey = "0"; // // You can get your key here: https://openweathermap.org/api
 	const uint8_t googleTimeZoneCrt[20] = {
 		0x5A, 0xCF, 0xFE, 0xF0, 0xF1, 0xA6, 0xF4, 0x5F, 0xD2, 0x11, 0x11, 0xC6, 0x1D, 0x2F, 0x0E, 0xBC, 0x39, 0x8D, 0x50, 0xE0
 	}; // Https fingerprint certification. Details at: https://github.com/esp8266/Arduino/blob/master/doc/esp8266wifi/client-secure-examples.rst
@@ -36,8 +35,6 @@ class NixieAPI {
 	String getSurroundingWiFiJson();
 
 	String getPublicIP();
-
-	String getTempAtMyLocation(String location, uint8_t format);
 
 	String getLocFromIpstack(String publicIP);
 	String getLocFromGoogle();

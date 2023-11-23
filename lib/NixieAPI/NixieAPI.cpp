@@ -35,12 +35,6 @@ void NixieAPI::applyKey(String key, uint8_t selectAPI)
 		Serial.println("applyKey successful, Google timezone key is:  " + googleTimeZoneKey);
 #endif // DEBUG
 		break;
-	case 4:
-		openWeaterMapKey = key;
-#ifdef DEBUG
-		Serial.println("applyKey successful, OpenWeaterMap key is:  " + openWeaterMapKey);
-#endif // DEBUG
-		break;
 	default:
 		Serial.println("Unknown value of selectAPI!");
 		break;
@@ -703,72 +697,6 @@ int NixieAPI::getTimezoneOffset(time_t now, uint8_t *dst)
 #endif // DEBUG
 	}
 	return tz;
-}
-
-/*                                                                            *
- *  Calls OpenWeatherMap API, to get the temperature for the given location.  *
- *  Available for Free. To access the API you need to sign up for an API key. * 
- *  Should be limited to 60 requests per minute.                              *
- *  https://openweathermap.org/api                                            *
- *                                                                            */
-String NixieAPI::getTempAtMyLocation(String location, uint8_t format)
-{
-	WiFiClient client;
-	HTTPClient http;
-	String payload, temperature;
-	String formatType = (format == 1) ? "metric" : "imperial";
-	String URL = "http://api.openweathermap.org/data/2.5/weather?id=" + location + "&units=" + formatType + "&APPID=" + openWeaterMapKey;
-#ifdef DEBUG
-	Serial.println("---------------------------------------------------------------------------------------------");
-	Serial.println("Requesting temperature for my location from: " + URL);
-#endif // DEBUG
-	http.setUserAgent(UserAgent);
-	if (!http.begin(client, URL)) {
-#ifdef DEBUG
-		Serial.println(F("getTempAtMyLocation: Connection failed!"));
-#endif // DEBUG
-	} else {
-#ifdef DEBUG
-		Serial.println("Connected to api.openweathermap.org!");
-#endif // DEBUG
-		int stat = http.GET();
-		if (stat > 0) {
-			if (stat == HTTP_CODE_OK) {
-				payload = http.getString();
-				DynamicJsonDocument doc(1024);
-				DeserializationError error = deserializeJson(doc, payload);
-				JsonObject main = doc["main"];
-				if (!error) {
-					temperature = main["temp"].as<String>();
-					int8_t dotPos = temperature.indexOf('.');
-					if (dotPos != -1) {
-						temperature.remove(dotPos);
-					}
-#ifdef DEBUG
-					String degreeType = (format == 1) ? "celsius" : "fahrenheit";
-					Serial.printf("Temperature at your location is %s degrees %s.\n", temperature.c_str(), degreeType.c_str());
-#endif // DEBUG
-				} else {
-#ifdef DEBUG
-					Serial.println(F("getTempAtMyLocation: JSON deserialization failed, error code: "));
-					Serial.println(error.c_str());
-					Serial.println(payload);
-#endif // DEBUG
-				}
-			} else {
-#ifdef DEBUG
-				Serial.printf("getTempAtMyLocation: [HTTP] GET reply %d\r\n", stat);
-#endif // DEBUG
-			}
-		} else {
-#ifdef DEBUG
-			Serial.printf("getTempAtMyLocation: [HTTP] GET failed: %s\r\n", http.errorToString(stat).c_str());
-#endif // DEBUG
-		}
-	}
-	http.end();
-
-	return temperature;
 }
 
 NixieAPI nixieTapAPI = NixieAPI();
