@@ -185,13 +185,7 @@ void processSyncEvent(NTPSyncEvent_t ntpEvent)
 			time_t ntp_time = NTP.getLastNTPSync();
 			Serial.print ("Got NTP time: ");
 			Serial.println(ntp_time);
-			if (!manual_time_flag) {
-				RTC.set(ntp_time);
-				setSyncProvider(RTC.get);
-				wifiFirstConnected = false;
-			}
-		} else {
-			Serial.println("Received non-error NTP sync event but time is not synced");
+			RTC.set(ntp_time);
 		}
 	}
 }
