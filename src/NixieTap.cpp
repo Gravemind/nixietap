@@ -321,12 +321,12 @@ void updateParameters()
 	Serial.println("Comparing entered keys with the saved ones.");
 	if (wifiManager.nixie_params.count("SSID") == 1) {
 		const char *nixie_ssid = wifiManager.nixie_params["SSID"].c_str();
-		if (nixie_ssid != "\0" and SSID != nixie_ssid) {
+		if (nixie_ssid[0] != '\0' and SSID != nixie_ssid) {
 			EEaddress = mem_map["SSID"];
 			strcpy(SSID, nixie_ssid);
 			EEPROM.put(EEaddress, SSID);
 			const char *nixie_pw = wifiManager.nixie_params["hotspot_password"].c_str();
-			if (nixie_pw != "\0" and password != nixie_pw) {
+			if (nixie_pw[0] != '\0' and password != nixie_pw) {
 				EEaddress = mem_map["password"];
 				strcpy(password, nixie_pw);
 				EEPROM.put(EEaddress, password);
@@ -335,12 +335,12 @@ void updateParameters()
 	}
 	if (wifiManager.nixie_params.count("target_ssid") == 1) {
 		const char *new_target_ssid = wifiManager.nixie_params["target_ssid"].c_str();
-		if (new_target_ssid != "\0" and target_SSID != new_target_ssid) {
+		if (new_target_ssid[0] != '\0' and target_SSID != new_target_ssid) {
 			EEaddress = mem_map["target_ssid"];
 			strcpy(target_SSID, new_target_ssid);
 			EEPROM.put(EEaddress, target_SSID);
 			const char *new_target_pw = wifiManager.nixie_params["target_password"].c_str();
-			if (new_target_pw != "\0" and new_target_pw != target_pw) {
+			if (new_target_pw[0] != '\0' and new_target_pw != target_pw) {
 				EEaddress = mem_map["target_pw"];
 				strcpy(target_pw, new_target_pw);
 				EEPROM.put(EEaddress, target_pw);
@@ -350,7 +350,7 @@ void updateParameters()
 	}
 	if (wifiManager.nixie_params.count("weather_api") == 1) {
 		const char *new_weather_key = wifiManager.nixie_params["weather_api"].c_str();
-		if (new_weather_key != "\0" and new_weather_key != weather_key) {
+		if (new_weather_key[0] != '\0' and new_weather_key != weather_key) {
 			EEaddress = mem_map["weather_key"];
 			strcpy(weather_key, new_weather_key);
 			EEPROM.put(EEaddress, weather_key);
@@ -360,7 +360,7 @@ void updateParameters()
 	}
 	if (wifiManager.nixie_params.count("weather_id") == 1) {
 		const char *new_weather_id = wifiManager.nixie_params["weather_id"].c_str();
-		if (new_weather_id != "\0" and new_weather_id != weather_id) {
+		if (new_weather_id[0] != '\0' and new_weather_id != weather_id) {
 			EEaddress = mem_map["weather_id"];
 			strcpy(weather_id, new_weather_id);
 			EEPROM.put(EEaddress, weather_id);
@@ -379,7 +379,7 @@ void updateParameters()
 
 	if (wifiManager.nixie_params.count("cryptoID") == 1) {
 		const char *new_crypto_id = wifiManager.nixie_params["cryptoID"].c_str();
-		if (new_crypto_id != "\0" and new_crypto_id != crypto_id) {
+		if (new_crypto_id[0] != '\0' and new_crypto_id != crypto_id) {
 			EEaddress = mem_map["crypto_id"];
 			strcpy(crypto_id, new_crypto_id);
 			EEPROM.put(EEaddress, crypto_id);
@@ -441,14 +441,14 @@ void updateParameters()
 	}
 	if (wifiManager.nixie_params.count("time") == 1) {
 		const char *new_time = wifiManager.nixie_params["time"].c_str();
-		if (new_time != "\0" and new_time != _time) {
+		if (new_time[0] != '\0' and new_time != _time) {
 			strcpy(_time, new_time);
 			timeRefreshFlag = 1;
 		}
 	}
 	if (wifiManager.nixie_params.count("date") == 1) {
 		const char *new_date = wifiManager.nixie_params["date"].c_str();
-		if (new_date != "\0" and new_date != date) {
+		if (new_date[0] != '\0' and new_date != date) {
 			strcpy(date, new_date);
 			timeRefreshFlag = 1;
 		}
@@ -456,7 +456,7 @@ void updateParameters()
 
 	if (wifiManager.nixie_params.count("stackKey") == 1) {
 		const char *new_crypto_key = wifiManager.nixie_params["stackKey"].c_str();
-		if (new_crypto_key != "\0" and new_crypto_key != crypto_key) {
+		if (new_crypto_key[0] != '\0' and new_crypto_key != crypto_key) {
 			EEaddress = mem_map["crypto_key"];
 			strcpy(crypto_key, new_crypto_key);
 			EEPROM.put(EEaddress, crypto_key);
