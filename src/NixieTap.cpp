@@ -171,19 +171,22 @@ void loop()
 		syncEventTriggered = false;
 	}
 
+	// Calculate the offset from UTC at the current instant.
+	int32_t offset = ZonedDateTime::forUnixSeconds64(t, time_zone).timeOffset().toSeconds();
+
 	// State machine
 	if (state > 1)
 		state = 0;
 
 	// Slot 0 - time
 	if (state == 0 && cfg_enable_time) {
-		nixieTap.writeTime(t, dot_state, cfg_enable_24h);
+		nixieTap.writeTime(t + offset, dot_state, cfg_enable_24h);
 	} else if (!cfg_enable_time && state == 0)
 		state++;
 
 	// Slot 1 - date
 	if (state == 1 && cfg_enable_date) {
-		nixieTap.writeDate(t, 1);
+		nixieTap.writeDate(t + offset, 1);
 	} else if (!cfg_enable_date && state == 1)
 		state++;
 
