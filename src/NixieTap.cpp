@@ -23,7 +23,6 @@ void resetEepromToDefault();
 void readButton();
 void firstRunInit();
 
-uint8_t fwVersion = 0;
 volatile bool dot_state = LOW;
 bool stopDef = false, secDotDef = false;
 bool wifiFirstConnected = true;
@@ -64,42 +63,57 @@ void setup()
 	mem_map["enable_time"] = 383;
 	mem_map["enable_24h"] = 387;
 	mem_map["non_init"] = 500;
-	// This line prevents the ESP from making spurious WiFi networks (ESP_XXXXX)
+
+	Serial.println("Nixie Tap is booting!");
+
+	// Start WiFi in station mode.
 	WiFi.mode(WIFI_STA);
-	nixieTap.write(10, 10, 10, 10, 0b10); // progress bar 25%
+
+	// Progress bar: 25%.
+	nixieTap.write(10, 10, 10, 10, 0b10);
 
 	// Touch button interrupt.
 	attachInterrupt(digitalPinToInterrupt(TOUCH_BUTTON), touchButtonPressed, RISING);
 
-	if (digitalRead(CONFIG_BUTTON)) {
-		delay(5000);
-		Serial.println("NIXIE TAP");
-		Serial.print("Firmware version: ");
-		Serial.println(fwVersion);
+	// Progress bar: 50%.
+	nixieTap.write(10, 10, 10, 10, 0b110);
+
+	// Reset EEPROM if uninitialized.
+	firstRunInit();
+
+	// Read all stored parameters from EEPROM.
+	readParameters();
+
+	// Progress bar: 75%.
+	nixieTap.write(10, 10, 10, 10, 0b1110);
+
+	// Configure the Time library to obtain the time from the on-board RTC.
+	setSyncProvider(RTC.get);
+	switch (timeStatus()) {
+	case timeSet:
+		Serial.println("System time has been set and synchronized with the on-board RTC.");
+		break;
+	case timeNotSet:
+		Serial.println("System time has not been set.");
+		break;
+	case timeNeedsSync:
+		Serial.println("System time has been set but a sync attempt did not succeed.");
+		break;
+	default:
+		Serial.println("Unknown time synchronization error!");
 	}
 
-	nixieTap.write(10, 10, 10, 10, 0b110); // progress bar 50%
-
-	firstRunInit();
-	readParameters(); // Read all stored parameters from EEPROM.
-
-	nixieTap.write(10, 10, 10, 10, 0b1110); // progress bar 75%
-
-	setSyncProvider(RTC.get); // the function to get the time from the RTC
 	enableSecDot();
 
-	// Connect to WiFi
+	// Connect to WiFi.
 	if (target_SSID[0] != '\0' && target_pw[0] != '\0') {
+		Serial.print("Connecting to Wi-Fi access point: ");
+		Serial.println(target_SSID);
 		wifiManager.connectWifi(target_SSID, target_pw);
 	}
 
-	// Serial debug message
-	if (timeStatus() != timeSet)
-		Serial.println("Unable to sync with the RTC!");
-	else
-		Serial.println("RTC has set the system time!");
-
-	nixieTap.write(10, 10, 10, 10, 0b11110); // progress bar 100%
+	// Progress bar: 100%.
+	nixieTap.write(10, 10, 10, 10, 0b11110);
 }
 
 void loop()
