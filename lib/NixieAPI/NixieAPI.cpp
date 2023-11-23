@@ -705,69 +705,6 @@ int NixieAPI::getTimezoneOffset(time_t now, uint8_t *dst)
 	return tz;
 }
 
-/*                                                                  *
- *  Calls Coinmarketcap API, to get crypto price                    *
- *  Should be limited to 30 requests per minute.                    *
- *  https://coinmarketcap.com/api/#endpoint_listings                *
- *                                                                  */
-String NixieAPI::getCryptoPrice(char *crypto_key, char *currencyID)
-{
-	std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
-	client->setFingerprint(crypto_cert);
-	HTTPClient https;
-	String URL = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?CMC_PRO_API_KEY=" + (String)crypto_key + "&id=" + (String)currencyID;
-	float price;
-	String payload, priceString, cryptoName;
-#ifdef DEBUG
-	Serial.println("---------------------------------------------------------------------------------------------");
-	Serial.println("Requesting price of a selected currency from: " + URL);
-#endif // DEBUG
-	//http.setInsecure();   // https://github.com/esp8266/Arduino/pull/2821
-	if (!https.begin(*client, URL)) {
-#ifdef DEBUG
-		Serial.println(F("CMC failed to connect!"));
-#endif // DEBUG
-		return "0";
-	} else {
-		int stat = https.GET();
-		if (stat > 0) {
-			if (stat == HTTP_CODE_OK) {
-				payload = https.getString();
-				DynamicJsonDocument doc(1024);
-				DeserializationError error = deserializeJson(doc, payload);
-				if (!error) {
-					price = doc["data"][(String)currencyID]["quote"]["USD"]["price"];
-					priceString = String(price, 1); // round to 1 decimal place
-					cryptoName = doc["data"][(String)currencyID]["name"].as<String>();
-#ifdef DEBUG
-					Serial.println("The current price of " + cryptoName + " is: " + price);
-#endif // DEBUG
-				} else {
-#ifdef DEBUG
-					Serial.println(F("CMC deserialization failed, error code: "));
-					Serial.println(error.c_str());
-					Serial.println(payload);
-#endif // DEBUG
-					return "0";
-				}
-			} else {
-#ifdef DEBUG
-				Serial.printf("CMC: [HTTP] GET reply %d\r\n", stat);
-#endif // DEBUG
-				return "0";
-			}
-		} else {
-#ifdef DEBUG
-			Serial.printf("CMC: [HTTP] GET failed: %s\r\n", https.errorToString(stat).c_str());
-#endif // DEBUG
-			return "0";
-		}
-	}
-	https.end();
-
-	return priceString;
-}
-
 /*                                                                            *
  *  Calls OpenWeatherMap API, to get the temperature for the given location.  *
  *  Available for Free. To access the API you need to sign up for an API key. * 

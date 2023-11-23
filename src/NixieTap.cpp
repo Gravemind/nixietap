@@ -18,7 +18,6 @@ void disableSecDot();
 void startPortalManually();
 void updateParameters();
 void readParameters();
-void cryptoRefresh();
 void weatherRefresh();
 void updateTime();
 void readAndParseSerial();
@@ -33,19 +32,18 @@ bool wifiFirstConnected = true;
 bool syncEventTriggered = false; // True if a time event has been triggered.
 
 uint8_t configButton = 0;
-volatile uint8_t state = 0, dotPosition = 0b10, weatherRefreshFlag = 1, cryptoRefreshFlag = 1;
+volatile uint8_t state = 0, dotPosition = 0b10, weatherRefreshFlag = 1;
 char buttonCounter;
 uint16_t buttonPressedCounter;
 bool buttonPressed = false;
-String cryptoCurrencyPrice = "", temperature = "", loc = "";
-Ticker movingDot, priceRefresh, temperatureRefresh; // Initializing software timer interrupt called movingDot and priceRefresh.
+String temperature = "", loc = "";
+Ticker movingDot, temperatureRefresh; // Initializing software timer interrupt called movingDot.
 NTPSyncEvent_t ntpEvent; // Last triggered event.
 WiFiManager wifiManager;
 time_t t;
 String serialCommand = "";
 
 time_t last_temp;
-time_t last_crypto;
 
 uint8 timeRefreshFlag;
 uint8 dateRefreshFlag;
@@ -58,7 +56,6 @@ char target_SSID[50] = "none";
 char target_pw[50] = "none";
 uint8 enable_time = 1;
 uint8 enable_date = 1;
-uint8 enable_crypto = 0;
 uint8 enable_temp = 0;
 uint8 manual_time_flag = 1;
 uint8 enable_DST = 0;
@@ -67,8 +64,6 @@ uint8 enable_24h = 1;
 int16_t offset = 0;
 char weather_key[50];
 char weather_id[50];
-char crypto_key[50];
-char crypto_id[30];
 
 std::map<String, int> mem_map;
 
@@ -81,13 +76,10 @@ void setup()
 	mem_map["weather_key"] = 200;
 	mem_map["weather_format"] = 250;
 	mem_map["weather_id"] = 251;
-	mem_map["crypto_key"] = 302;
-	mem_map["crypto_id"] = 351;
 	mem_map["manual_time_flag"] = 381;
 	mem_map["enable_date"] = 382;
 	mem_map["enable_time"] = 383;
 	mem_map["enable_temp"] = 384;
-	mem_map["enable_crypto"] = 385;
 	mem_map["enable_dst"] = 386;
 	mem_map["enable_24h"] = 387;
 	mem_map["offset"] = 388;
@@ -161,20 +153,6 @@ void loop()
 	if (state == 1 && enable_date) {
 		nixieTap.writeDate(t, 1);
 	} else if (!enable_date && state == 1)
-		state++;
-
-	// Slot 2 - crypto price
-	if (state == 2 && enable_crypto) {
-		if (cryptoRefreshFlag) {
-			cryptoRefreshFlag = 0;
-			cryptoCurrencyPrice = nixieTapAPI.getCryptoPrice(crypto_key, crypto_id);
-			last_crypto = now();
-		}
-		if (now() - last_crypto >= 60) {
-			cryptoRefreshFlag = 1;
-		}
-		nixieTap.writeNumber(cryptoCurrencyPrice, 250);
-	} else if (!enable_crypto && state == 2)
 		state++;
 
 	// Slot 3 - temperature
@@ -278,12 +256,6 @@ void readParameters()
 	EEaddress = mem_map["weather_format"];
 	EEPROM.get(EEaddress, weather_format);
 	Serial.println("WEATHER FORMAT IS:" + (String)weather_format);
-	EEaddress = mem_map["crypto_key"];
-	EEPROM.get(EEaddress, crypto_key);
-	Serial.println("CRYPTO KEY IS:" + (String)crypto_key);
-	EEaddress = mem_map["crypto_id"];
-	EEPROM.get(EEaddress, crypto_id);
-	Serial.println("CRYPTO ID IS:" + (String)crypto_id);
 	EEaddress = mem_map["manual_time_flag"];
 	EEPROM.get(EEaddress, manual_time_flag);
 	Serial.println("MANUAL TIME FLAG IS:" + (String)manual_time_flag);
@@ -299,9 +271,6 @@ void readParameters()
 	EEaddress = mem_map["enable_temp"];
 	EEPROM.get(EEaddress, enable_temp);
 	Serial.println("ENABLE TEMP IS:" + (String)enable_temp);
-	EEaddress = mem_map["enable_crypto"];
-	EEPROM.get(EEaddress, enable_crypto);
-	Serial.println("ENABLE CRYPTO IS:" + (String)enable_crypto);
 	EEaddress = mem_map["enable_dst"];
 	EEPROM.get(EEaddress, enable_DST);
 	Serial.println("ENABLE DST IS:" + (String)enable_DST);
@@ -376,15 +345,6 @@ void updateParameters()
 			weatherRefreshFlag = 1;
 		}
 	}
-
-	if (wifiManager.nixie_params.count("cryptoID") == 1) {
-		const char *new_crypto_id = wifiManager.nixie_params["cryptoID"].c_str();
-		if (new_crypto_id[0] != '\0' and new_crypto_id != crypto_id) {
-			EEaddress = mem_map["crypto_id"];
-			strcpy(crypto_id, new_crypto_id);
-			EEPROM.put(EEaddress, crypto_id);
-		}
-	}
 	uint8_t new_enable_date = (uint8_t)wifiManager.nixie_params.count("enableDate");
 	if (new_enable_date != enable_date) {
 		EEaddress = mem_map["enable_date"];
@@ -408,12 +368,6 @@ void updateParameters()
 		EEaddress = mem_map["enable_temp"];
 		enable_temp = new_enable_temp;
 		EEPROM.put(EEaddress, enable_temp);
-	}
-	uint8_t new_enable_crypto = (uint8_t)wifiManager.nixie_params.count("enableCrypto");
-	if (new_enable_crypto != enable_crypto) {
-		EEaddress = mem_map["enable_crypto"];
-		enable_crypto = new_enable_crypto;
-		EEPROM.put(EEaddress, enable_crypto);
 	}
 	uint8_t new_enable_dst = (uint8_t)wifiManager.nixie_params.count("dst");
 	if (new_enable_dst != enable_DST) {
@@ -453,24 +407,11 @@ void updateParameters()
 			timeRefreshFlag = 1;
 		}
 	}
-
-	if (wifiManager.nixie_params.count("stackKey") == 1) {
-		const char *new_crypto_key = wifiManager.nixie_params["stackKey"].c_str();
-		if (new_crypto_key[0] != '\0' and new_crypto_key != crypto_key) {
-			EEaddress = mem_map["crypto_key"];
-			strcpy(crypto_key, new_crypto_key);
-			EEPROM.put(EEaddress, crypto_key);
-		}
-	}
 	// Setting the "non initialized" flag to 0
 	EEaddress = mem_map["non_init"];
 	EEPROM.put(EEaddress, 0);
 
 	EEPROM.commit();
-	if (enable_crypto) {
-		priceRefresh.attach(300, cryptoRefresh); // This will refresh the cryptocurrency price every 5min.
-	} else
-		priceRefresh.detach();
 	if (enable_temp) {
 		temperatureRefresh.attach(3600, weatherRefresh);
 	} else
@@ -585,11 +526,6 @@ void touchButtonPressed()
 	nixieTap.setAnimation(true);
 }
 
-void cryptoRefresh()
-{
-	enable_crypto = 1;
-}
-
 void weatherRefresh()
 {
 	enable_temp = 1;
@@ -634,10 +570,6 @@ void resetEepromToDefault()
 	EEPROM.put(EEaddress, "");
 	EEaddress = mem_map["weather_format"];
 	EEPROM.put(EEaddress, 0);
-	EEaddress = mem_map["crypto_key"];
-	EEPROM.put(EEaddress, "");
-	EEaddress = mem_map["crypto_id"];
-	EEPROM.put(EEaddress, "");
 	EEaddress = mem_map["manual_time_flag"];
 	EEPROM.put(EEaddress, 1);
 	EEaddress = mem_map["enable_date"];
@@ -645,8 +577,6 @@ void resetEepromToDefault()
 	EEaddress = mem_map["enable_time"];
 	EEPROM.put(EEaddress, 1);
 	EEaddress = mem_map["enable_temp"];
-	EEPROM.put(EEaddress, 0);
-	EEaddress = mem_map["enable_crypto"];
 	EEPROM.put(EEaddress, 0);
 	EEaddress = mem_map["enable_dst"];
 	EEPROM.put(EEaddress, 0);
