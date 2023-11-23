@@ -216,34 +216,42 @@ void readParameters()
 
 	int EEaddress = mem_map["SSID"];
 	EEPROM.get(EEaddress, SSID);
+	Serial.print("[EEPROM Read] ");
 	Serial.println("SSID: " + (String)SSID);
 
 	EEaddress = mem_map["password"];
 	EEPROM.get(EEaddress, password);
+	Serial.print("[EEPROM Read] ");
 	Serial.println("password: " + (String)password);
 
 	EEaddress = mem_map["target_ssid"];
 	EEPROM.get(EEaddress, target_SSID);
+	Serial.print("[EEPROM Read] ");
 	Serial.println("target_ssid: " + (String)target_SSID);
 
 	EEaddress = mem_map["target_pw"];
 	EEPROM.get(EEaddress, target_pw);
+	Serial.print("[EEPROM Read] ");
 	Serial.println("target_pw: " + (String)target_pw);
 
 	EEaddress = mem_map["manual_time_flag"];
 	EEPROM.get(EEaddress, manual_time_flag);
+	Serial.print("[EEPROM Read] ");
 	Serial.println("manual_time_flag: " + (String)manual_time_flag);
 
 	EEaddress = mem_map["enable_date"];
 	EEPROM.get(EEaddress, enable_date);
+	Serial.print("[EEPROM Read] ");
 	Serial.println("enable_date: " + (String)enable_date);
 
 	EEaddress = mem_map["enable_time"];
 	EEPROM.get(EEaddress, enable_time);
+	Serial.print("[EEPROM Read] ");
 	Serial.println("enable_time: " + (String)enable_time);
 
 	EEaddress = mem_map["enable_24h"];
 	EEPROM.get(EEaddress, enable_24h);
+	Serial.print("[EEPROM Read] ");
 	Serial.println("enable_24h: " + (String)enable_24h);
 }
 
@@ -466,34 +474,42 @@ void resetEepromToDefault()
 
 	int EEaddress = mem_map["SSID"];
 	EEPROM.put(EEaddress, "NixieTap");
+	Serial.print("[EEPROM Reset] ");
 	Serial.println("AP mode SSID network name: NixieTap");
 
 	EEaddress = mem_map["password"];
 	EEPROM.put(EEaddress, "NixieTap");
+	Serial.print("[EEPROM Reset] ");
 	Serial.println("AP mode SSID network password: NixieTap");
 
 	EEaddress = mem_map["target_ssid"];
 	EEPROM.put(EEaddress, "");
+	Serial.print("[EEPROM Reset] ");
 	Serial.println("Clearing station mode SSID network name");
 
 	EEaddress = mem_map["target_pw"];
 	EEPROM.put(EEaddress, "");
+	Serial.print("[EEPROM Reset] ");
 	Serial.println("Clearing station mode SSID network password");
 
 	EEaddress = mem_map["manual_time_flag"];
 	EEPROM.put(EEaddress, 1);
+	Serial.print("[EEPROM Reset] ");
 	Serial.println("manual_time_flag: 1");
 
 	EEaddress = mem_map["enable_date"];
 	EEPROM.put(EEaddress, 1);
+	Serial.print("[EEPROM Reset] ");
 	Serial.println("enable_date: 1");
 
 	EEaddress = mem_map["enable_time"];
 	EEPROM.put(EEaddress, 1);
+	Serial.print("[EEPROM Reset] ");
 	Serial.println("enable_time: 1");
 
 	EEaddress = mem_map["enable_24h"];
 	EEPROM.put(EEaddress, 1);
+	Serial.print("[EEPROM Reset] ");
 	Serial.println("enable_24h: 1");
 
 	EEPROM.commit();
