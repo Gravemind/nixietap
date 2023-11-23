@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <AceTime.h>
 #include <nixie.h>
 #include <BQ32000RTC.h>
 #include <NtpClientLib.h>
@@ -7,6 +8,8 @@
 #include <EEPROM.h>
 #include <Ticker.h>
 #include <map>
+
+using namespace ace_time;
 
 IRAM_ATTR void irq_1Hz_int(); // Interrupt function for changing the dot state every 1 second.
 IRAM_ATTR void touchButtonPressed(); // Interrupt function when button is pressed.
@@ -60,6 +63,14 @@ uint8_t cfg_enable_24h = 1;
 
 std::map<String, int> mem_map;
 
+static const int TZ_CACHE_SIZE = 1;
+static ExtendedZoneProcessorCache<TZ_CACHE_SIZE> zoneProcessorCache;
+static ExtendedZoneManager zoneManager(
+	zonedbx::kZoneAndLinkRegistrySize,
+	zonedbx::kZoneAndLinkRegistry,
+	zoneProcessorCache);
+TimeZone time_zone;
+
 void setup()
 {
 	mem_map["SSID"] = 0;
@@ -95,6 +106,18 @@ void setup()
 
 	// Read all stored parameters from EEPROM.
 	readParameters();
+
+	// Load time zone.
+	time_zone = zoneManager.createForZoneName(cfg_time_zone);
+	if (time_zone.isError()) {
+		Serial.println("Unable to load time zone, using UTC.");
+
+		// Use UTC instead.
+		time_zone = zoneManager.createForZoneInfo(&zonedbx::kZoneEtc_UTC);
+		if (time_zone.isError()) {
+			Serial.println("WARNING! Unable to load UTC time zone.");
+		}
+	}
 
 	// Progress bar: 75%.
 	nixieTap.write(10, 10, 10, 10, 0b1110);
