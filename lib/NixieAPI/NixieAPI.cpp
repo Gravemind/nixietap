@@ -316,7 +316,7 @@ String NixieAPI::getLocFromGoogle()
 	client.println(request);
 #ifdef DEBUG
 	Serial.println("getLocFromGoogle: Request sent!");
-#endif // DEBUG \
+#endif // DEBUG
 	// Wait for response
 	long timeout = millis() + MAX_CONNECTION_TIMEOUT;
 	// checking the timeout
@@ -721,7 +721,7 @@ String NixieAPI::getCryptoPrice(char *crypto_key, char *currencyID)
 #ifdef DEBUG
 	Serial.println("---------------------------------------------------------------------------------------------");
 	Serial.println("Requesting price of a selected currency from: " + URL);
-#endif // DEBUG \
+#endif // DEBUG
 	//http.setInsecure();   // https://github.com/esp8266/Arduino/pull/2821
 	if (!https.begin(*client, URL)) {
 #ifdef DEBUG

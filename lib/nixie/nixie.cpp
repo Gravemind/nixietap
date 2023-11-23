@@ -10,7 +10,7 @@ void Nixie::begin()
 // Fire up the serial if DEBUG is defined.
 #ifdef DEBUG
 	Serial.begin(115200);
-#endif // DEBUG \
+#endif // DEBUG
 	// Turn off the Nixie tubes. If this is not called nixies might show some random stuff on startup.
 	write(11, 11, 11, 11, 0);
 	// Set SPI chip select as output
