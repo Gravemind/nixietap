@@ -11,17 +11,19 @@
 IRAM_ATTR void irq_1Hz_int(); // Interrupt function for changing the dot state every 1 second.
 IRAM_ATTR void touchButtonPressed(); // Interrupt function when button is pressed.
 IRAM_ATTR void scrollDots(); // Interrupt function for scrolling dots.
-void processSyncEvent(NTPSyncEvent_t ntpEvent);
-void enableSecDot();
+
 void disableSecDot();
+void enableSecDot();
+void firstRunInit();
+void printTime(time_t);
+void processSyncEvent(NTPSyncEvent_t ntpEvent);
+void readAndParseSerial();
+void readButton();
+void readParameters();
+void resetEepromToDefault();
 void startPortalManually();
 void updateParameters();
-void readParameters();
 void updateTime();
-void readAndParseSerial();
-void resetEepromToDefault();
-void readButton();
-void firstRunInit();
 
 volatile bool dot_state = LOW;
 bool stopDef = false, secDotDef = false;
@@ -108,6 +110,7 @@ void setup()
 	default:
 		Serial.println("Unknown time synchronization error!");
 	}
+	printTime(now());
 
 	enableSecDot();
 
@@ -204,9 +207,8 @@ void processSyncEvent(NTPSyncEvent_t ntpEvent)
 	} else {
 		if (ntpEvent == timeSyncd && NTP.SyncStatus()) {
 			time_t ntp_time = NTP.getLastNTPSync();
-			Serial.print ("Got NTP time: ");
-			Serial.println(ntp_time);
 			RTC.set(ntp_time);
+			printTime(ntp_time);
 		}
 	}
 }
@@ -463,8 +465,10 @@ void readAndParseSerial()
 				readParameters();
 			} else if (serialCommand == "restart") {
 				ESP.restart();
+			} else if (serialCommand == "time") {
+				printTime(now());
 			} else if (serialCommand == "help") {
-				Serial.println("Available commands: init, read, restart, help.");
+				Serial.println("Available commands: init, read, restart, time, help.");
 			} else {
 				Serial.println("Unknown command.");
 			}
@@ -472,6 +476,53 @@ void readAndParseSerial()
 			serialCommand = "";
 		}
 	}
+}
+
+void printTime(time_t t)
+{
+	tmElements_t tm;
+	breakTime(t, tm);
+
+	Serial.print("The time is now: ");
+
+	Serial.print(tmYearToCalendar(tm.Year));
+
+	Serial.print('-');
+
+	if (tm.Month < 10) {
+		Serial.print('0');
+	}
+	Serial.print(tm.Month);
+
+	Serial.print('-');
+	if (tm.Day < 10) {
+		Serial.print('0');
+	}
+	Serial.print(tm.Day);
+
+	Serial.print('T');
+
+	if (tm.Hour < 10) {
+		Serial.print('0');
+	}
+	Serial.print(tm.Hour);
+
+	Serial.print(':');
+
+	if (tm.Minute < 10) {
+		Serial.print('0');
+	}
+	Serial.print(tm.Minute);
+
+	Serial.print(':');
+
+	if (tm.Second < 10) {
+		Serial.print('0');
+	}
+	Serial.print(tm.Second);
+
+	Serial.print(" @ ");
+	Serial.println(t);
 }
 
 void resetEepromToDefault()
