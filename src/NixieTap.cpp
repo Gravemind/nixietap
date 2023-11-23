@@ -443,6 +443,10 @@ void readAndParseSerial()
 			resetEepromToDefault();
 		} else if (serialCommand.equals("read\r")) {
 			readParameters();
+		} else if (serialCommand.equals("restart\r")) {
+			ESP.restart();
+		} else if (serialCommand.equals("help\r")) {
+			Serial.println("Available commands: init, read, restart, help.");
 		} else {
 			Serial.println("Unknown command.");
 		}
