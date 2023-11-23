@@ -591,47 +591,8 @@ void readAndParseSerial()
 
 void printTime(time_t t)
 {
-	tmElements_t tm;
-	breakTime(t, tm);
-
 	Serial.print("The time is now: ");
-
-	Serial.print(tmYearToCalendar(tm.Year));
-
-	Serial.print('-');
-
-	if (tm.Month < 10) {
-		Serial.print('0');
-	}
-	Serial.print(tm.Month);
-
-	Serial.print('-');
-	if (tm.Day < 10) {
-		Serial.print('0');
-	}
-	Serial.print(tm.Day);
-
-	Serial.print('T');
-
-	if (tm.Hour < 10) {
-		Serial.print('0');
-	}
-	Serial.print(tm.Hour);
-
-	Serial.print(':');
-
-	if (tm.Minute < 10) {
-		Serial.print('0');
-	}
-	Serial.print(tm.Minute);
-
-	Serial.print(':');
-
-	if (tm.Second < 10) {
-		Serial.print('0');
-	}
-	Serial.print(tm.Second);
-
+	ZonedDateTime::forUnixSeconds64(t, time_zone).printTo(Serial);
 	Serial.print(" @ ");
 	Serial.println(t);
 }
