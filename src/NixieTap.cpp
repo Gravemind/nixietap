@@ -451,19 +451,25 @@ void touchButtonPressed()
 
 void readAndParseSerial()
 {
-	if (Serial.available()) {
-		serialCommand = Serial.readStringUntil('\n');
+	if (Serial.available() > 0) {
+		serialCommand.concat(Serial.readStringUntil('\n'));
 
-		if (serialCommand.equals("init\r")) {
-			resetEepromToDefault();
-		} else if (serialCommand.equals("read\r")) {
-			readParameters();
-		} else if (serialCommand.equals("restart\r")) {
-			ESP.restart();
-		} else if (serialCommand.equals("help\r")) {
-			Serial.println("Available commands: init, read, restart, help.");
-		} else {
-			Serial.println("Unknown command.");
+		if (serialCommand.endsWith("\r")) {
+			serialCommand.trim();
+
+			if (serialCommand == "init") {
+				resetEepromToDefault();
+			} else if (serialCommand == "read") {
+				readParameters();
+			} else if (serialCommand == "restart") {
+				ESP.restart();
+			} else if (serialCommand == "help") {
+				Serial.println("Available commands: init, read, restart, help.");
+			} else {
+				Serial.println("Unknown command.");
+			}
+
+			serialCommand = "";
 		}
 	}
 }
