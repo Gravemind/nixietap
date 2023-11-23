@@ -211,35 +211,35 @@ void readParameters()
 
 	int EEaddress = mem_map["SSID"];
 	EEPROM.get(EEaddress, SSID);
-	Serial.println("SSID:" + (String)SSID);
+	Serial.println("SSID: " + (String)SSID);
 
 	EEaddress = mem_map["password"];
 	EEPROM.get(EEaddress, password);
-	Serial.println("password:" + (String)password);
+	Serial.println("password: " + (String)password);
 
 	EEaddress = mem_map["target_ssid"];
 	EEPROM.get(EEaddress, target_SSID);
-	Serial.println("target_ssid:" + (String)target_SSID);
+	Serial.println("target_ssid: " + (String)target_SSID);
 
 	EEaddress = mem_map["target_pw"];
 	EEPROM.get(EEaddress, target_pw);
-	Serial.println("target_pw:" + (String)target_pw);
+	Serial.println("target_pw: " + (String)target_pw);
 
 	EEaddress = mem_map["manual_time_flag"];
 	EEPROM.get(EEaddress, manual_time_flag);
-	Serial.println("manual_time_flag:" + (String)manual_time_flag);
+	Serial.println("manual_time_flag: " + (String)manual_time_flag);
 
 	EEaddress = mem_map["enable_date"];
 	EEPROM.get(EEaddress, enable_date);
-	Serial.println("enable_date:" + (String)enable_date);
+	Serial.println("enable_date: " + (String)enable_date);
 
 	EEaddress = mem_map["enable_time"];
 	EEPROM.get(EEaddress, enable_time);
-	Serial.println("enable_time:" + (String)enable_time);
+	Serial.println("enable_time: " + (String)enable_time);
 
 	EEaddress = mem_map["enable_24h"];
 	EEPROM.get(EEaddress, enable_24h);
-	Serial.println("enable_24h:" + (String)enable_24h);
+	Serial.println("enable_24h: " + (String)enable_24h);
 }
 
 void updateParameters()
