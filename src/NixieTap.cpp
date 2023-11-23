@@ -440,13 +440,6 @@ void readAndParseSerial()
 		serialCommand = Serial.readStringUntil('\n');
 
 		if (serialCommand.equals("init\r")) {
-			Serial.println("Writing factory defaults to EEPROM...");
-			Serial.println("Hotspot SSID: NixieTap");
-			Serial.println("Hotspot password: NixieTap");
-			Serial.println("Time format: 24h");
-			Serial.println("Enabled display modes: time and date");
-			Serial.println("Disabled display modes: other");
-			Serial.println("Operation mode: semi-auto");
 			resetEepromToDefault();
 		} else if (serialCommand.equals("read\r")) {
 			readParameters();
@@ -458,31 +451,41 @@ void readAndParseSerial()
 
 void resetEepromToDefault()
 {
+	Serial.println("Writing factory defaults to EEPROM...");
+
 	EEPROM.begin(512);
 
 	int EEaddress = mem_map["SSID"];
 	EEPROM.put(EEaddress, "NixieTap");
+	Serial.println("AP mode SSID network name: NixieTap");
 
 	EEaddress = mem_map["password"];
 	EEPROM.put(EEaddress, "NixieTap");
+	Serial.println("AP mode SSID network password: NixieTap");
 
 	EEaddress = mem_map["target_ssid"];
 	EEPROM.put(EEaddress, "");
+	Serial.println("Clearing station mode SSID network name");
 
 	EEaddress = mem_map["target_pw"];
 	EEPROM.put(EEaddress, "");
+	Serial.println("Clearing station mode SSID network password");
 
 	EEaddress = mem_map["manual_time_flag"];
 	EEPROM.put(EEaddress, 1);
+	Serial.println("manual_time_flag: 1");
 
 	EEaddress = mem_map["enable_date"];
 	EEPROM.put(EEaddress, 1);
+	Serial.println("enable_date: 1");
 
 	EEaddress = mem_map["enable_time"];
 	EEPROM.put(EEaddress, 1);
+	Serial.println("enable_time: 1");
 
 	EEaddress = mem_map["enable_24h"];
-	EEPROM.put(EEaddress, 0);
+	EEPROM.put(EEaddress, 1);
+	Serial.println("enable_24h: 1");
 
 	EEPROM.commit();
 }
