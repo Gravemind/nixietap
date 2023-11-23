@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <nixie.h>
-#include <NixieAPI.h>
 #include <BQ32000RTC.h>
 #include <NtpClientLib.h>
 #include <TimeLib.h>
