@@ -39,6 +39,8 @@ String serialCommand = "";
 
 uint8 timeRefreshFlag;
 
+const char *NixieTap = "NixieTap";
+
 char _time[6] = "00:00";
 char date[11] = "1970-01-01";
 char SSID[50] = "NixieTap";
@@ -112,7 +114,7 @@ void setup()
 	if (target_SSID[0] != '\0' && target_pw[0] != '\0') {
 		Serial.print("Connecting to Wi-Fi access point: ");
 		Serial.println(target_SSID);
-		wifiManager.setHostname("NixieTap");
+		wifiManager.setHostname(NixieTap);
 		wifiManager.connectWifi(target_SSID, target_pw);
 	}
 
