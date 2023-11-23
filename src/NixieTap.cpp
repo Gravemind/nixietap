@@ -21,6 +21,7 @@ void readAndParseSerial();
 void readButton();
 void readParameters();
 void resetEepromToDefault();
+void startNTPClient();
 void startPortalManually();
 void updateParametersFromPortal();
 void updateTime();
@@ -139,13 +140,7 @@ void loop()
 
 	// If time is configured to be set semi-auto or auto and NixieTap is just started, the NTP client is started.
 	if (cfg_manual_time_flag == 0 && wifiFirstConnected && WiFi.status() == WL_CONNECTED) {
-		NTP.onNTPSyncEvent([](NTPSyncEvent_t event) {
-			ntpEvent = event;
-			syncEventTriggered = true;
-		});
-		NTP.setInterval(63); /* XXX: Remove this after testing */
-		Serial.println("Starting NTP client.");
-		NTP.begin();
+		startNTPClient();
 		wifiFirstConnected = false;
 	}
 	if (syncEventTriggered) {
@@ -170,6 +165,28 @@ void loop()
 		state++;
 
 	// Here you can add new functions for displaying numbers on NixieTap, just follow the basic writing principle from above.
+}
+
+void startNTPClient()
+{
+	Serial.println("Starting NTP client.");
+
+	NTP.onNTPSyncEvent([](NTPSyncEvent_t event) {
+		ntpEvent = event;
+		syncEventTriggered = true;
+	});
+
+	if (!NTP.setInterval(cfg_ntp_sync_interval)) {
+		Serial.println("Failed to set NTP sync interval!");
+	}
+
+	if (!NTP.setNtpServerName(cfg_ntp_server)) {
+		Serial.println("Failed to set NTP server name!");
+	}
+
+	if (!NTP.begin()) {
+		Serial.println("Failed to start NTP client!");
+	}
 }
 
 void startPortalManually()
@@ -454,12 +471,7 @@ void updateTime()
 			Serial.println("Manually entered date and time saved!");
 		} else if (WiFi.status() == WL_CONNECTED) {
 			Serial.println("NixieTap is auto and connected, setting time to NTP!");
-			NTP.onNTPSyncEvent([](NTPSyncEvent_t event) {
-				ntpEvent = event;
-				syncEventTriggered = true;
-			});
-			Serial.println("Starting NTP client.");
-			NTP.begin();
+			startNTPClient();
 			wifiFirstConnected = false;
 		} else {
 			Serial.println("NixieTap not connected to WiFi, cannot auto sync time via NTP!");
