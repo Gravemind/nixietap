@@ -8,7 +8,6 @@
 #include <TimeLib.h>
 #include <EEPROM.h>
 #include <Ticker.h>
-#include <map>
 
 using namespace ace_time;
 
@@ -35,29 +34,43 @@ bool stopDef = false, secDotDef = false;
 bool wifiFirstConnected = true;
 bool syncEventTriggered = false; // True if a time event has been triggered.
 
-uint8_t configButton = 0;
-volatile uint8_t state = 0, dotPosition = 0b10;
-char buttonCounter;
-Ticker movingDot; // Initializing software timer interrupt called movingDot.
-NTPSyncEvent_t ntpEvent; // Last triggered event.
 time_t t;
 time_t last_wifi_connect_attempt;
-String serialCommand = "";
-ESP8266WiFiMulti wifiMulti;
 
-uint8_t timeRefreshFlag;
+uint8_t configButton = 0;
+volatile uint8_t state = 0, dotPosition = 0b10;
+uint32_t buttonCounter;
+ESP8266WiFiMulti wifiMulti;
+Ticker movingDot; // Initializing software timer interrupt called movingDot.
+NTPSyncEvent_t ntpEvent; // Last triggered event.
+String serialCommand = "";
 
 const char *NixieTap = "NixieTap";
 
-char cfg_target_SSID[50] = "\0";
-char cfg_target_pw[50] = "\0";
-char cfg_ntp_server[50] = "time.google.com";
-char cfg_time_zone[50] = "America/New_York";
+char cfg_ssid[50] = "\0";
+char cfg_password[50] = "\0";
+char cfg_ntp_server[50] = "\0";
+char cfg_time_zone[50] = "\0";
+uint8_t cfg_24hr_enabled = 1;
+uint8_t cfg_ntp_enabled = 1;
 uint32_t cfg_ntp_sync_interval = 3671;
-uint8_t cfg_manual_time_flag = 1;
-uint8_t cfg_enable_24h = 1;
 
-std::map<String, int> mem_map;
+#define DEFAULT__24HR_ENABLED		1
+#define DEFAULT__NTP_ENABLED		1
+#define DEFAULT__NTP_SERVER		"time.google.com"
+#define DEFAULT__NTP_SYNC_INTERVAL	3671
+#define DEFAULT__TIME_ZONE		"America/New_York"
+
+#define EEPROM_ADDR__24HR_ENABLED	10	// 1 byte
+#define EEPROM_ADDR__NTP_ENABLED	11	// 1 byte
+#define EEPROM_ADDR__NTP_SYNC_INTERVAL	50	// 4 bytes
+#define EEPROM_ADDR__SSID		100	// 50 bytes
+#define EEPROM_ADDR__PASSWORD		150	// 50 bytes
+#define EEPROM_ADDR__NTP_SERVER		200	// 50 bytes
+#define EEPROM_ADDR__TIME_ZONE		250	// 50 bytes
+#define EEPROM_ADDR__MAGIC		500	// 8 bytes
+
+#define EEPROM_MAGIC			0x4e49584945544150
 
 static const int TZ_CACHE_SIZE = 1;
 static ExtendedZoneProcessorCache<TZ_CACHE_SIZE> zoneProcessorCache;
@@ -69,21 +82,12 @@ TimeZone time_zone;
 
 void setup()
 {
-	mem_map["target_ssid"] = 100;
-	mem_map["target_pw"] = 150;
-	mem_map["ntp_server"] = 200;
-	mem_map["time_zone"] = 250;
-	mem_map["manual_time_flag"] = 381;
-	mem_map["enable_24h"] = 387;
-	mem_map["ntp_sync_interval"] = 388;
-	mem_map["non_init"] = 500;
-
 	Serial.println("\r\n\r\n\r\nNixie Tap is booting!");
 
 	// Set WiFi station mode settings.
 	WiFi.mode(WIFI_STA);
 	WiFi.hostname(NixieTap);
-	wifiMulti.addAP(cfg_target_SSID, cfg_target_pw);
+	wifiMulti.addAP(cfg_ssid, cfg_password);
 
 	// Progress bar: 25%.
 	nixieTap.write(10, 10, 10, 10, 0b10);
@@ -141,8 +145,8 @@ void loop()
 		connectWiFi();
 	}
 
-	// If time is configured to be set semi-auto or auto and NixieTap is just started, the NTP client is started.
-	if (cfg_manual_time_flag == 0 && wifiFirstConnected && WiFi.status() == WL_CONNECTED) {
+	// Start the NTP client if enabled and connected to WiFi.
+	if (cfg_ntp_enabled == 1 && wifiFirstConnected && WiFi.status() == WL_CONNECTED) {
 		startNTPClient();
 		wifiFirstConnected = false;
 	}
@@ -160,7 +164,7 @@ void loop()
 
 	// Slot 0 - time
 	if (state == 0) {
-		nixieTap.writeTime(t + offset, dot_state, cfg_enable_24h);
+		nixieTap.writeTime(t + offset, dot_state, cfg_24hr_enabled);
 	}
 
 	// Slot 1 - date
@@ -171,9 +175,9 @@ void loop()
 
 void connectWiFi()
 {
-	if (cfg_target_SSID[0] != '\0' && cfg_target_pw[0] != '\0') {
+	if (cfg_ssid[0] != '\0' && cfg_password[0] != '\0') {
 		Serial.print("Connecting to Wi-Fi access point: ");
-		Serial.println(cfg_target_SSID);
+		Serial.println(cfg_ssid);
 
 		if (wifiMulti.run(5000 /* connect timeout */) == WL_CONNECTED) {
 			Serial.print("Connected, IP address: ");
@@ -232,46 +236,6 @@ void processSyncEvent(NTPSyncEvent_t ntpEvent)
 			printTime(ntp_time);
 		}
 	}
-}
-
-void readParameters()
-{
-	Serial.println("Reading saved parameters from EEPROM.");
-
-	int EEaddress = mem_map["target_ssid"];
-	EEPROM.get(EEaddress, cfg_target_SSID);
-	Serial.print("[EEPROM Read] ");
-	Serial.println("target_ssid: " + (String)cfg_target_SSID);
-
-	EEaddress = mem_map["target_pw"];
-	EEPROM.get(EEaddress, cfg_target_pw);
-	Serial.print("[EEPROM Read] ");
-	Serial.println("target_pw: " + (String)cfg_target_pw);
-
-	EEaddress = mem_map["ntp_server"];
-	EEPROM.get(EEaddress, cfg_ntp_server);
-	Serial.print("[EEPROM Read] ");
-	Serial.println("ntp_server: " + (String)cfg_ntp_server);
-
-	EEaddress = mem_map["time_zone"];
-	EEPROM.get(EEaddress, cfg_time_zone);
-	Serial.print("[EEPROM Read] ");
-	Serial.println("time_zone: " + (String)cfg_time_zone);
-
-	EEaddress = mem_map["manual_time_flag"];
-	EEPROM.get(EEaddress, cfg_manual_time_flag);
-	Serial.print("[EEPROM Read] ");
-	Serial.println("manual_time_flag: " + (String)cfg_manual_time_flag);
-
-	EEaddress = mem_map["enable_24h"];
-	EEPROM.get(EEaddress, cfg_enable_24h);
-	Serial.print("[EEPROM Read] ");
-	Serial.println("enable_24h: " + (String)cfg_enable_24h);
-
-	EEaddress = mem_map["ntp_sync_interval"];
-	EEPROM.get(EEaddress, cfg_ntp_sync_interval);
-	Serial.print("[EEPROM Read] ");
-	Serial.println("ntp_sync_interval: " + (String)cfg_ntp_sync_interval);
 }
 
 /*                                                           *
@@ -390,46 +354,86 @@ void printTime(time_t t)
 	Serial.println(t);
 }
 
+void readParameters()
+{
+	Serial.println("Reading saved parameters from EEPROM...");
+
+	EEPROM.get(EEPROM_ADDR__24HR_ENABLED, cfg_24hr_enabled);
+	Serial.print("[EEPROM Read] ");
+	Serial.print("24hr_enabled: ");
+	Serial.println(cfg_24hr_enabled);
+
+	EEPROM.get(EEPROM_ADDR__NTP_ENABLED, cfg_ntp_enabled);
+	Serial.print("[EEPROM Read] ");
+	Serial.print("ntp_enabled: ");
+	Serial.println(cfg_ntp_enabled);
+
+	EEPROM.get(EEPROM_ADDR__NTP_SYNC_INTERVAL, cfg_ntp_sync_interval);
+	Serial.print("[EEPROM Read] ");
+	Serial.print("ntp_sync_interval: ");
+	Serial.println(cfg_ntp_sync_interval);
+
+	EEPROM.get(EEPROM_ADDR__NTP_SERVER, cfg_ntp_server);
+	Serial.print("[EEPROM Read] ");
+	Serial.print("ntp_server: ");
+	Serial.println(cfg_ntp_server);
+
+	EEPROM.get(EEPROM_ADDR__TIME_ZONE, cfg_time_zone);
+	Serial.print("[EEPROM Read] ");
+	Serial.print("time_zone: ");
+	Serial.println(cfg_time_zone);
+
+	EEPROM.get(EEPROM_ADDR__SSID, cfg_ssid);
+	Serial.print("[EEPROM Read] ");
+	Serial.print("ssid: ");
+	Serial.println(cfg_ssid);
+
+	EEPROM.get(EEPROM_ADDR__PASSWORD, cfg_password);
+	Serial.print("[EEPROM Read] ");
+	Serial.print("password: ");
+	Serial.println(cfg_password);
+}
+
 void resetEepromToDefault()
 {
 	Serial.println("Writing factory defaults to EEPROM...");
 
 	EEPROM.begin(512);
 
-	int EEaddress = mem_map["target_ssid"];
-	EEPROM.put(EEaddress, "");
+	EEPROM.put(EEPROM_ADDR__24HR_ENABLED, DEFAULT__24HR_ENABLED);
 	Serial.print("[EEPROM Reset] ");
-	Serial.println("Clearing station mode SSID network name");
+	Serial.print("24hr_enabled: ");
+	Serial.println(DEFAULT__24HR_ENABLED);
 
-	EEaddress = mem_map["target_pw"];
-	EEPROM.put(EEaddress, "");
+	EEPROM.put(EEPROM_ADDR__NTP_ENABLED, DEFAULT__NTP_ENABLED);
 	Serial.print("[EEPROM Reset] ");
-	Serial.println("Clearing station mode SSID network password");
+	Serial.print("ntp_enabled: ");
+	Serial.println(DEFAULT__NTP_ENABLED);
 
-	EEaddress = mem_map["ntp_server"];
-	EEPROM.put(EEaddress, "time.google.com");
+	EEPROM.put(EEPROM_ADDR__NTP_SERVER, DEFAULT__NTP_SERVER);
 	Serial.print("[EEPROM Reset] ");
-	Serial.println("ntp_server: time.google.com");
+	Serial.print("ntp_server: ");
+	Serial.println(DEFAULT__NTP_ENABLED);
 
-	EEaddress = mem_map["time_zone"];
-	EEPROM.put(EEaddress, "America/New_York");
+	EEPROM.put(EEPROM_ADDR__NTP_SYNC_INTERVAL, DEFAULT__NTP_SYNC_INTERVAL);
 	Serial.print("[EEPROM Reset] ");
-	Serial.println("time_zone: America/New_York");
+	Serial.print("ntp_sync_interval: ");
+	Serial.println(DEFAULT__NTP_SYNC_INTERVAL);
 
-	EEaddress = mem_map["manual_time_flag"];
-	EEPROM.put(EEaddress, 1);
+	EEPROM.put(EEPROM_ADDR__TIME_ZONE, DEFAULT__TIME_ZONE);
 	Serial.print("[EEPROM Reset] ");
-	Serial.println("manual_time_flag: 1");
+	Serial.print("time_zone: ");
+	Serial.println(DEFAULT__TIME_ZONE);
 
-	EEaddress = mem_map["enable_24h"];
-	EEPROM.put(EEaddress, 1);
+	EEPROM.put(EEPROM_ADDR__SSID, "");
 	Serial.print("[EEPROM Reset] ");
-	Serial.println("enable_24h: 1");
+	Serial.println("ssid: (not set)");
 
-	EEaddress = mem_map["ntp_sync_interval"];
-	EEPROM.put(EEaddress, 1);
+	EEPROM.put(EEPROM_ADDR__PASSWORD, "");
 	Serial.print("[EEPROM Reset] ");
-	Serial.println("ntp_sync_interval: 3671");
+	Serial.println("password: (not set)");
+
+	EEPROM.put(EEPROM_ADDR__MAGIC, EEPROM_MAGIC);
 
 	EEPROM.commit();
 }
@@ -445,11 +449,11 @@ void readButton()
 
 void firstRunInit()
 {
-	bool notInitialized = 1;
+	uint64_t magic = 0;
 	EEPROM.begin(512);
-	EEPROM.get(mem_map["non_init"], notInitialized);
-	if (notInitialized) {
-		Serial.println("Performing first run initialization...");
+	EEPROM.get(EEPROM_ADDR__MAGIC, magic);
+	if (magic != EEPROM_MAGIC) {
+		Serial.println("EEPROM magic value mismatch.");
 		resetEepromToDefault();
 	}
 }
