@@ -133,6 +133,7 @@ void setup()
 	if (cfg_target_SSID[0] != '\0' && cfg_target_pw[0] != '\0') {
 		Serial.print("Connecting to Wi-Fi access point: ");
 		Serial.println(cfg_target_SSID);
+		wifiManager.setConnectTimeout(15);
 		wifiManager.connectWifi(cfg_target_SSID, cfg_target_pw);
 	}
 
@@ -363,6 +364,7 @@ void updateParametersFromPortal()
 				EEaddress = mem_map["target_pw"];
 				strcpy(cfg_target_pw, new_target_pw);
 				EEPROM.put(EEaddress, cfg_target_pw);
+				wifiManager.setConnectTimeout(15);
 				wifiManager.connectWifi(cfg_target_SSID, cfg_target_pw);
 			}
 		}
