@@ -24,6 +24,7 @@ void readAndParseSerial();
 void readButton();
 void readParameters();
 void resetEepromToDefault();
+void setSystemTimeFromRTC();
 void startNTPClient();
 void startPortalManually();
 void updateParametersFromPortal();
@@ -122,21 +123,8 @@ void setup()
 	// Progress bar: 75%.
 	nixieTap.write(10, 10, 10, 10, 0b1110);
 
-	// Configure the Time library to obtain the time from the on-board RTC.
-	setSyncProvider(RTC.get);
-	switch (timeStatus()) {
-	case timeSet:
-		Serial.println("System time has been set and synchronized with the on-board RTC.");
-		break;
-	case timeNotSet:
-		Serial.println("System time has not been set.");
-		break;
-	case timeNeedsSync:
-		Serial.println("System time has been set but a sync attempt did not succeed.");
-		break;
-	default:
-		Serial.println("Unknown time synchronization error!");
-	}
+	// Set the system time from the on-board RTC.
+	setSystemTimeFromRTC();
 	printTime(now());
 
 	enableSecDot();
@@ -191,6 +179,13 @@ void loop()
 		state++;
 
 	// Here you can add new functions for displaying numbers on NixieTap, just follow the basic writing principle from above.
+}
+
+void setSystemTimeFromRTC()
+{
+	time_t rtc_time = RTC.get();
+	setTime(rtc_time);
+	Serial.println("System time has been set from the on-board RTC.");
 }
 
 void startNTPClient()
