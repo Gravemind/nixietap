@@ -314,8 +314,11 @@ void readAndParseSerial()
 				parseSerialSet(serialCommand.substring(strlen("set ")));
 			} else if (serialCommand == "time") {
 				printTime(now());
+			} else if (serialCommand == "write") {
+				EEPROM.commit();
+				Serial.println("[EEPROM Commit]");
 			} else if (serialCommand == "help") {
-				Serial.println("Available commands: init, read, restart, set, time, help.");
+				Serial.println("Available commands: init, read, restart, set, time, write, help.");
 			} else {
 				Serial.print("Unknown command: ");
 				Serial.println(serialCommand);
