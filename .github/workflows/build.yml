@@ -1,0 +1,37 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*.*.*" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -U platformio
+    - name: Build with PlatformIO
+      run: |
+        cd firmware && pio run
+    - name: Rename firmware file
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        mv firmware/.pio/build/esp12e/firmware.bin firmware-${{ github.ref_name }}.bin
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: "firmware-${{ github.ref_name }}.bin"
