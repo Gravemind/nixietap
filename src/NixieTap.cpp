@@ -35,6 +35,7 @@ void setSystemTimeFromRTC();
 void startNTPClient();
 
 volatile bool dot_state = LOW;
+volatile bool touch_button_pressed = false;
 bool stopDef = false, secDotDef = false;
 bool wifiFirstConnected = true;
 bool syncEventTriggered = false;
@@ -142,6 +143,12 @@ void loop()
 	readButton();
 
 	t = now();
+
+	// Print the current time if the touch sensor was pressed.
+	if (touch_button_pressed) {
+		touch_button_pressed = false;
+		printTime(t);
+	}
 
 	// Check if we should attempt to reconnect to WiFi.
 	if (WiFi.status() != WL_CONNECTED && t - last_wifi_connect_attempt > 30) {
@@ -293,6 +300,7 @@ void irq_1Hz_int()
 void touchButtonPressed()
 {
 	state++;
+	touch_button_pressed = true;
 	nixieTap.setAnimation(true);
 }
 
