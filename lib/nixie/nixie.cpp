@@ -23,8 +23,6 @@ void Nixie::begin()
 	// fire up the RTC
 	RTC.begin(RTC_SDA_PIN, RTC_SCL_PIN);
 	RTC.setCharger(2);
-	setSyncProvider(RTC.get); // Tells the Time.h library from where to sink the time.
-	setSyncInterval(60); // Sync interval is in seconds.
 }
 
 uint8_t Nixie::checkDate(uint16_t y, uint8_t m, uint8_t d, uint8_t h, uint8_t mm)
