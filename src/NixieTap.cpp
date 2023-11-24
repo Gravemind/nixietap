@@ -11,9 +11,14 @@
 
 using namespace ace_time;
 
-IRAM_ATTR void irq_1Hz_int(); // Interrupt function for changing the dot state every 1 second.
-IRAM_ATTR void touchButtonPressed(); // Interrupt function when button is pressed.
-IRAM_ATTR void scrollDots(); // Interrupt function for scrolling dots.
+// Interrupt function for changing the dot state every 1 second.
+IRAM_ATTR void irq_1Hz_int();
+
+// Interrupt function when button is pressed.
+IRAM_ATTR void touchButtonPressed();
+
+// Interrupt function for scrolling dots.
+IRAM_ATTR void scrollDots();
 
 void connectWiFi();
 void disableSecDot();
@@ -21,7 +26,7 @@ void enableSecDot();
 void firstRunInit();
 void parseSerialSet(String);
 void printTime(time_t);
-void processSyncEvent(NTPSyncEvent_t ntpEvent);
+void processSyncEvent(NTPSyncEvent_t);
 void readAndParseSerial();
 void readButton();
 void readParameters();
@@ -32,18 +37,18 @@ void startNTPClient();
 volatile bool dot_state = LOW;
 bool stopDef = false, secDotDef = false;
 bool wifiFirstConnected = true;
-bool syncEventTriggered = false; // True if a time event has been triggered.
+bool syncEventTriggered = false;
 
 time_t t;
 time_t last_wifi_connect_attempt;
 
 uint8_t configButton = 0;
-volatile uint8_t state = 0, dotPosition = 0b10;
 uint32_t buttonCounter;
+volatile uint8_t state = 0, dotPosition = 0b10;
 ESP8266WiFiMulti wifiMulti;
-Ticker movingDot; // Initializing software timer interrupt called movingDot.
-NTPSyncEvent_t ntpEvent; // Last triggered event.
+NTPSyncEvent_t ntpEvent;
 String serialCommand = "";
+Ticker movingDot;
 
 const char *NixieTap = "NixieTap";
 
@@ -133,12 +138,10 @@ void setup()
 
 void loop()
 {
-	// Polling functions
 	readAndParseSerial();
 	readButton();
 
-	// Mandatory functions to be executed every cycle
-	t = now(); // update date and time variable
+	t = now();
 
 	// Check if we should attempt to reconnect to WiFi.
 	if (WiFi.status() != WL_CONNECTED && t - last_wifi_connect_attempt > 30) {
@@ -150,6 +153,8 @@ void loop()
 		startNTPClient();
 		wifiFirstConnected = false;
 	}
+
+	// Handle an event triggered from the NTP client.
 	if (syncEventTriggered) {
 		processSyncEvent(ntpEvent);
 		syncEventTriggered = false;
@@ -158,9 +163,10 @@ void loop()
 	// Calculate the offset from UTC at the current instant.
 	int32_t offset = ZonedDateTime::forUnixSeconds64(t, time_zone).timeOffset().toSeconds();
 
-	// State machine
-	if (state > 1)
+	// State machine.
+	if (state > 1) {
 		state = 0;
+	}
 
 	// Slot 0 - time
 	if (state == 0) {
@@ -190,8 +196,7 @@ void connectWiFi()
 
 void setSystemTimeFromRTC()
 {
-	time_t rtc_time = RTC.get();
-	setTime(rtc_time);
+	setTime(RTC.get());
 	Serial.println("System time has been set from the on-board RTC.");
 }
 
@@ -215,9 +220,6 @@ void startNTPClient()
 
 void processSyncEvent(NTPSyncEvent_t ntpEvent)
 {
-	// When syncEventTriggered is triggered, through NTPClient, Nixie checks if NTP time is received.
-	// If NTP time is received, Nixie starts synchronization of RTC time with received NTP time.
-
 	if (ntpEvent < 0) {
 		Serial.print("Time sync error: ");
 		if (ntpEvent == noResponse) {
@@ -238,9 +240,9 @@ void processSyncEvent(NTPSyncEvent_t ntpEvent)
 	}
 }
 
-/*                                                           *
- *  Enables the center dot to change its state every second. *
- *                                                           */
+/*
+ * Enable the center dot to change its state every second.
+ */
 void enableSecDot()
 {
 	if (secDotDef == false) {
@@ -252,9 +254,9 @@ void enableSecDot()
 	}
 }
 
-/*                                                *
- * Disaling the dots function on nixie display.   *
- *                                                */
+/*
+ * Disable the dots function on nixie display.
+ */
 void disableSecDot()
 {
 	if (stopDef == false) {
@@ -266,9 +268,9 @@ void disableSecDot()
 	}
 }
 
-/*                                                                                       *
- * An interrupt function that changes the state and position of the dots on the display. *
- *                                                                                       */
+/*
+ * An interrupt function that changes the state and position of the dots on the display.
+ */
 void scrollDots()
 {
 	if (dotPosition == 0b100000)
@@ -277,17 +279,17 @@ void scrollDots()
 	dotPosition = dotPosition << 1;
 }
 
-/*                                                                  *
- * An interrupt function for changing the dot state every 1 second. *
- *                                                                  */
+/*
+ * An interrupt function for changing the dot state every second.
+ */
 void irq_1Hz_int()
 {
 	dot_state = !dot_state;
 }
 
-/*                                                                *
- * An interrupt function for the touch sensor when it is touched. *
- *                                                                */
+/*
+ * An interrupt function for the touch sensor when it is touched.
+ */
 void touchButtonPressed()
 {
 	state++;
@@ -307,9 +309,18 @@ void readAndParseSerial()
 			} else if (serialCommand == "read") {
 				readParameters();
 			} else if (serialCommand == "restart") {
+				Serial.println("Nixie Tap is restarting!");
 				ESP.restart();
 			} else if (serialCommand == "set") {
-				Serial.println("Available 'set' commands: 24hr_enabled, ntp_enabled, ntp_sync_interval, ntp_server, time_zone, ssid, password, time.");
+				Serial.println("Available 'set' commands: "
+					       "24hr_enabled, "
+					       "ntp_enabled, "
+					       "ntp_sync_interval, "
+					       "ntp_server, "
+					       "time_zone, "
+					       "ssid, "
+					       "password, "
+					       "time.");
 			} else if (serialCommand.startsWith("set ")) {
 				parseSerialSet(serialCommand.substring(strlen("set ")));
 			} else if (serialCommand == "time") {
@@ -318,7 +329,14 @@ void readAndParseSerial()
 				EEPROM.commit();
 				Serial.println("[EEPROM Commit]");
 			} else if (serialCommand == "help") {
-				Serial.println("Available commands: init, read, restart, set, time, write, help.");
+				Serial.println("Available commands: "
+					       "init, "
+					       "read, "
+					       "restart, "
+					       "set, "
+					       "time, "
+					       "write, "
+					       "help.");
 			} else {
 				Serial.print("Unknown command: ");
 				Serial.println(serialCommand);
