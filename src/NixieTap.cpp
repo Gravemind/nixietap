@@ -202,14 +202,7 @@ void startNTPClient()
 		Serial.println("Failed to set NTP sync interval!");
 	}
 
-	if (!NTP.setNtpServerName(cfg_ntp_server)) {
-		Serial.println("Failed to set NTP server name!");
-	}
-
-	Serial.print("NTP server set to: ");
-	Serial.println(NTP.getNtpServerName());
-
-	if (!NTP.begin()) {
+	if (!NTP.begin(cfg_ntp_server)) {
 		Serial.println("Failed to start NTP client!");
 	}
 }
