@@ -309,7 +309,7 @@ void readAndParseSerial()
 			} else if (serialCommand == "restart") {
 				ESP.restart();
 			} else if (serialCommand == "set") {
-				Serial.println("Available 'set' commands: time.");
+				Serial.println("Available 'set' commands: 24hr_enabled, ntp_enabled, ntp_sync_interval, ntp_server, time_zone, ssid, password, time.");
 			} else if (serialCommand.startsWith("set ")) {
 				parseSerialSet(serialCommand.substring(strlen("set ")));
 			} else if (serialCommand == "time") {
@@ -328,7 +328,52 @@ void readAndParseSerial()
 
 void parseSerialSet(String s)
 {
-	if (s.startsWith("time ")) {
+	if (s.startsWith("24hr_enabled ")) {
+		uint8_t val = (uint8_t)atoi(s.substring(strlen("24hr_enabled ")).c_str());
+		cfg_24hr_enabled = val;
+		Serial.print("[EEPROM Write] ");
+		Serial.print("24hr_enabled: ");
+		Serial.println(val);
+		EEPROM.put(EEPROM_ADDR__24HR_ENABLED, val);
+	} else if (s.startsWith("ntp_enabled ")) {
+		uint8_t val = (uint8_t)atoi(s.substring(strlen("ntp_enabled ")).c_str());
+		cfg_ntp_enabled = val;
+		Serial.print("[EEPROM Write] ");
+		Serial.print("ntp_enabled: ");
+		Serial.println(val);
+		EEPROM.put(EEPROM_ADDR__NTP_ENABLED, val);
+	} else if (s.startsWith("ntp_sync_interval ")) {
+		uint32_t val = (uint8_t)atoi(s.substring(strlen("ntp_sync_interval ")).c_str());
+		cfg_ntp_sync_interval = val;
+		Serial.print("[EEPROM Write] ");
+		Serial.print("ntp_sync_interval: ");
+		Serial.println(val);
+		EEPROM.put(EEPROM_ADDR__NTP_SYNC_INTERVAL, val);
+	} else if (s.startsWith("ntp_server ")) {
+		strcpy(cfg_ntp_server, s.substring(strlen("ntp_server ")).c_str());
+		Serial.print("[EEPROM Write] ");
+		Serial.print("ntp_server: ");
+		Serial.println(cfg_ntp_server);
+		EEPROM.put(EEPROM_ADDR__NTP_SERVER, cfg_ntp_server);
+	} else if (s.startsWith("time_zone ")) {
+		strcpy(cfg_time_zone, s.substring(strlen("time_zone ")).c_str());
+		Serial.print("[EEPROM Write] ");
+		Serial.print("time_zone: ");
+		Serial.println(cfg_time_zone);
+		EEPROM.put(EEPROM_ADDR__TIME_ZONE, cfg_time_zone);
+	} else if (s.startsWith("ssid ")) {
+		strcpy(cfg_ssid, s.substring(strlen("ssid ")).c_str());
+		Serial.print("[EEPROM Write] ");
+		Serial.print("ssid: ");
+		Serial.println(cfg_ssid);
+		EEPROM.put(EEPROM_ADDR__SSID, cfg_ssid);
+	} else if (s.startsWith("password ")) {
+		strcpy(cfg_password, s.substring(strlen("password ")).c_str());
+		Serial.print("[EEPROM Write] ");
+		Serial.print("password: ");
+		Serial.println(cfg_password);
+		EEPROM.put(EEPROM_ADDR__PASSWORD, cfg_password);
+	} else if (s.startsWith("time ")) {
 		String s_time = s.substring(strlen("time "));
 		auto odt = OffsetDateTime::forDateString(s_time.c_str());
 		if (!odt.isError()) {
