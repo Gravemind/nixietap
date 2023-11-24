@@ -41,7 +41,7 @@ bool stopDef = false, secDotDef = false;
 bool wifiFirstConnected = true;
 bool syncEventTriggered = false;
 
-time_t t;
+time_t current_time;
 
 uint8_t configButton = 0;
 uint32_t buttonCounter;
@@ -136,12 +136,12 @@ void loop()
 	readAndParseSerial();
 	readButton();
 
-	t = now();
+	current_time = now();
 
 	// Print the current time if the touch sensor was pressed.
 	if (touch_button_pressed) {
 		touch_button_pressed = false;
-		printTime(t);
+		printTime(current_time);
 	}
 
 	// Start the NTP client if enabled and connected to WiFi.
@@ -157,7 +157,7 @@ void loop()
 	}
 
 	// Calculate the offset from UTC at the current instant.
-	int32_t offset = ZonedDateTime::forUnixSeconds64(t, time_zone).timeOffset().toSeconds();
+	int32_t offset = ZonedDateTime::forUnixSeconds64(current_time, time_zone).timeOffset().toSeconds();
 
 	// State machine.
 	if (state > 1) {
@@ -166,12 +166,12 @@ void loop()
 
 	// Slot 0 - time
 	if (state == 0) {
-		nixieTap.writeTime(t + offset, dot_state, cfg_24hr_enabled);
+		nixieTap.writeTime(current_time + offset, dot_state, cfg_24hr_enabled);
 	}
 
 	// Slot 1 - date
 	if (state == 1) {
-		nixieTap.writeDate(t + offset, 1);
+		nixieTap.writeDate(current_time + offset, 1);
 	}
 }
 
