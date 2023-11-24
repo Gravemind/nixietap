@@ -1,10 +1,11 @@
 #include <Arduino.h>
+#include <ESP8266WiFi.h>
+#include <ESP8266WiFiMulti.h>
 #include <AceTime.h>
 #include <nixie.h>
 #include <BQ32000RTC.h>
 #include <NtpClientLib.h>
 #include <TimeLib.h>
-#include <WiFiManager.h>
 #include <EEPROM.h>
 #include <Ticker.h>
 #include <map>
@@ -15,6 +16,7 @@ IRAM_ATTR void irq_1Hz_int(); // Interrupt function for changing the dot state e
 IRAM_ATTR void touchButtonPressed(); // Interrupt function when button is pressed.
 IRAM_ATTR void scrollDots(); // Interrupt function for scrolling dots.
 
+void connectWiFi();
 void disableSecDot();
 void enableSecDot();
 void firstRunInit();
@@ -27,9 +29,6 @@ void readParameters();
 void resetEepromToDefault();
 void setSystemTimeFromRTC();
 void startNTPClient();
-void startPortalManually();
-void updateParametersFromPortal();
-void updateTime();
 
 volatile bool dot_state = LOW;
 bool stopDef = false, secDotDef = false;
@@ -41,9 +40,10 @@ volatile uint8_t state = 0, dotPosition = 0b10;
 char buttonCounter;
 Ticker movingDot; // Initializing software timer interrupt called movingDot.
 NTPSyncEvent_t ntpEvent; // Last triggered event.
-WiFiManager wifiManager;
 time_t t;
+time_t last_wifi_connect_attempt;
 String serialCommand = "";
+ESP8266WiFiMulti wifiMulti;
 
 uint8_t timeRefreshFlag;
 
@@ -93,6 +93,7 @@ void setup()
 	// Set WiFi station mode settings.
 	WiFi.mode(WIFI_STA);
 	WiFi.hostname(NixieTap);
+	wifiMulti.addAP(cfg_target_SSID, cfg_target_pw);
 
 	// Progress bar: 25%.
 	nixieTap.write(10, 10, 10, 10, 0b10);
@@ -130,13 +131,7 @@ void setup()
 
 	enableSecDot();
 
-	// Connect to WiFi.
-	if (cfg_target_SSID[0] != '\0' && cfg_target_pw[0] != '\0') {
-		Serial.print("Connecting to Wi-Fi access point: ");
-		Serial.println(cfg_target_SSID);
-		wifiManager.setConnectTimeout(15);
-		wifiManager.connectWifi(cfg_target_SSID, cfg_target_pw);
-	}
+	connectWiFi();
 
 	// Progress bar: 100%.
 	nixieTap.write(10, 10, 10, 10, 0b11110);
@@ -150,6 +145,11 @@ void loop()
 
 	// Mandatory functions to be executed every cycle
 	t = now(); // update date and time variable
+
+	// Check if we should attempt to reconnect to WiFi.
+	if (WiFi.status() != WL_CONNECTED && t - last_wifi_connect_attempt > 30) {
+		connectWiFi();
+	}
 
 	// If time is configured to be set semi-auto or auto and NixieTap is just started, the NTP client is started.
 	if (cfg_manual_time_flag == 0 && wifiFirstConnected && WiFi.status() == WL_CONNECTED) {
@@ -183,6 +183,21 @@ void loop()
 	// Here you can add new functions for displaying numbers on NixieTap, just follow the basic writing principle from above.
 }
 
+void connectWiFi()
+{
+	if (cfg_target_SSID[0] != '\0' && cfg_target_pw[0] != '\0') {
+		Serial.print("Connecting to Wi-Fi access point: ");
+		Serial.println(cfg_target_SSID);
+
+		if (wifiMulti.run(5000 /* connect timeout */) == WL_CONNECTED) {
+			Serial.print("Connected, IP address: ");
+			Serial.println(WiFi.localIP());
+		}
+	}
+
+	last_wifi_connect_attempt = now();
+}
+
 void setSystemTimeFromRTC()
 {
 	time_t rtc_time = RTC.get();
@@ -206,25 +221,6 @@ void startNTPClient()
 	if (!NTP.begin(cfg_ntp_server)) {
 		Serial.println("Failed to start NTP client!");
 	}
-}
-
-void startPortalManually()
-{
-	// By pressing the button on the back of the device you can manually start the WiFi Manager and access it's settings.
-	nixieTap.write(10, 10, 10, 10, 0);
-	disableSecDot(); // If the dots are not disabled, precisely the RTC_IRQ_PIN interrupt, ConfigPortal will chrach.
-	movingDot.attach(0.2, scrollDots);
-	wifiManager.setConfigPortalTimeout(1800);
-	// This will run a new config portal if the SSID and PW are valid.
-	if (!wifiManager.startConfigPortal(cfg_SSID, cfg_password)) {
-		Serial.println("Failed to connect and hit timeout!");
-		// If the NixieTap is not connected to WiFi, it will collect the entered parameters and configure the RTC according to them.
-	}
-	updateParametersFromPortal();
-	updateTime();
-	movingDot.detach();
-	nixieTap.write(10, 10, 10, 10, 0); // Deletes remaining dot on display.
-	enableSecDot();
 }
 
 void processSyncEvent(NTPSyncEvent_t ntpEvent)
@@ -310,194 +306,6 @@ void readParameters()
 	EEPROM.get(EEaddress, cfg_ntp_sync_interval);
 	Serial.print("[EEPROM Read] ");
 	Serial.println("ntp_sync_interval: " + (String)cfg_ntp_sync_interval);
-}
-
-void updateParametersFromPortal()
-{
-	Serial.println("Synchronizing parameters from portal.");
-	EEPROM.begin(512); // Number of bytes to allocate for parameters.
-	int EEaddress;
-
-	if (wifiManager.nixie_params.count("SSID") == 1) {
-		const char *new_ssid = wifiManager.nixie_params["SSID"].c_str();
-		if (new_ssid[0] != '\0' &&
-		    strlen(new_ssid) < sizeof(cfg_SSID) &&
-		    strcmp(cfg_SSID, new_ssid))
-		{
-			EEaddress = mem_map["SSID"];
-			strcpy(cfg_SSID, new_ssid);
-			EEPROM.put(EEaddress, cfg_SSID);
-
-			const char *new_password = wifiManager.nixie_params["hotspot_password"].c_str();
-			if (new_password[0] != '\0' &&
-			    strlen(new_password) < sizeof(cfg_password) &&
-			    strcmp(cfg_password, new_password))
-			{
-				EEaddress = mem_map["password"];
-				strcpy(cfg_password, new_password);
-				EEPROM.put(EEaddress, cfg_password);
-			}
-		}
-	}
-
-	if (wifiManager.nixie_params.count("target_ssid") == 1) {
-		const char *new_target_ssid = wifiManager.nixie_params["target_ssid"].c_str();
-		if (new_target_ssid[0] != '\0' &&
-		    strlen(new_target_ssid) < sizeof(cfg_target_SSID) &&
-		    strcmp(cfg_target_SSID, new_target_ssid))
-		{
-			EEaddress = mem_map["target_ssid"];
-			strcpy(cfg_target_SSID, new_target_ssid);
-			EEPROM.put(EEaddress, cfg_target_SSID);
-
-			const char *new_target_pw = wifiManager.nixie_params["target_password"].c_str();
-			if (new_target_pw[0] != '\0' &&
-			    strlen(new_target_pw) < sizeof(cfg_target_pw) &&
-			    strcmp(new_target_pw, cfg_target_pw))
-			{
-				EEaddress = mem_map["target_pw"];
-				strcpy(cfg_target_pw, new_target_pw);
-				EEPROM.put(EEaddress, cfg_target_pw);
-				wifiManager.setConnectTimeout(15);
-				wifiManager.connectWifi(cfg_target_SSID, cfg_target_pw);
-			}
-		}
-	}
-
-	if (wifiManager.nixie_params.count("ntp_server") == 1) {
-		const char *new_ntp_server = wifiManager.nixie_params["ntp_server"].c_str();
-		if (new_ntp_server[0] != '\0' &&
-		    strlen(new_ntp_server) < sizeof(cfg_ntp_server) &&
-		    strcmp(cfg_ntp_server, new_ntp_server))
-		{
-			EEaddress = mem_map["ntp_server"];
-			strcpy(cfg_ntp_server, new_ntp_server);
-			EEPROM.put(EEaddress, cfg_ntp_server);
-		}
-	}
-
-	if (wifiManager.nixie_params.count("time_zone") == 1) {
-		const char *new_time_zone = wifiManager.nixie_params["time_zone"].c_str();
-		if (new_time_zone[0] != '\0' &&
-		    strlen(new_time_zone) < sizeof(cfg_time_zone) &&
-		    strcmp(cfg_time_zone, new_time_zone))
-		{
-			EEaddress = mem_map["time_zone"];
-			strcpy(cfg_time_zone, new_time_zone);
-			EEPROM.put(EEaddress, cfg_time_zone);
-		}
-	}
-
-	uint8_t new_enable_date = (uint8_t)wifiManager.nixie_params.count("enableDate");
-	if (new_enable_date != cfg_enable_date) {
-		EEaddress = mem_map["enable_date"];
-		cfg_enable_date = new_enable_date;
-		EEPROM.put(EEaddress, cfg_enable_date);
-	}
-
-	uint8_t new_enable_time = (uint8_t)wifiManager.nixie_params.count("enableTime");
-	if (new_enable_time != cfg_enable_time) {
-		EEaddress = mem_map["enable_time"];
-		cfg_enable_time = new_enable_time;
-		EEPROM.put(EEaddress, new_enable_time);
-	}
-
-	uint8_t new_enable_24h = (uint8_t)wifiManager.nixie_params.count("enable24h");
-	if (cfg_enable_24h != new_enable_24h) {
-		EEaddress = mem_map["enable_24h"];
-		cfg_enable_24h = new_enable_24h;
-		EEPROM.put(EEaddress, cfg_enable_24h);
-	}
-
-	if (wifiManager.nixie_params.count("setTimeManuallyFlag") == 1) {
-		uint8_t new_manual_time_flag = atoi(wifiManager.nixie_params["setTimeManuallyFlag"].c_str());
-		if (new_manual_time_flag != cfg_manual_time_flag) {
-			EEaddress = mem_map["manual_time_flag"];
-			uint8_t temp_time_flag = new_manual_time_flag;
-			EEPROM.put(EEaddress, temp_time_flag);
-		}
-		cfg_manual_time_flag = new_manual_time_flag;
-		timeRefreshFlag = 1;
-	}
-
-	if (wifiManager.nixie_params.count("ntp_sync_interval") == 1) {
-		uint32_t new_ntp_sync_interval = atoi(wifiManager.nixie_params["ntp_sync_interval"].c_str());
-		if (new_ntp_sync_interval != cfg_ntp_sync_interval) {
-			EEaddress = mem_map["ntp_sync_interval"];
-			EEPROM.put(EEaddress, new_ntp_sync_interval);
-		}
-		cfg_ntp_sync_interval = new_ntp_sync_interval;
-	}
-
-	if (wifiManager.nixie_params.count("time") == 1) {
-		const char *new_time = wifiManager.nixie_params["time"].c_str();
-		if (new_time[0] != '\0' && strcmp(new_time, cfg_time)) {
-			strcpy(cfg_time, new_time);
-			timeRefreshFlag = 1;
-		}
-	}
-
-	if (wifiManager.nixie_params.count("date") == 1) {
-		const char *new_date = wifiManager.nixie_params["date"].c_str();
-		if (new_date[0] != '\0' && strcmp(new_date, cfg_date)) {
-			strcpy(cfg_date, new_date);
-			timeRefreshFlag = 1;
-		}
-	}
-
-	// Setting the "non initialized" flag to 0
-	EEaddress = mem_map["non_init"];
-	EEPROM.put(EEaddress, 0);
-
-	EEPROM.commit();
-	wifiManager.nixie_params.clear();
-	Serial.println("Synchronization of parameters completed!");
-}
-
-void updateTime()
-{
-	if (timeRefreshFlag) {
-		if (cfg_manual_time_flag) { // I need feedback from the WiFiManager API that this option has been selected.
-			NTP.stop(); // NTP sync is disableded to avoid sync errors.
-			int hours = -1;
-			int minutes = -1;
-			char *time_token = strtok(cfg_time, ":");
-			while (time_token != NULL) {
-				if (hours == -1) {
-					hours = atoi(time_token);
-				} else {
-					minutes = atoi(time_token);
-				}
-				time_token = strtok(NULL, " ");
-			}
-			int year = -1;
-			int month = -1;
-			int day = -1;
-			char *date_token = strtok(cfg_date, "-");
-			while (date_token != NULL) {
-				if (year == -1) {
-					year = atoi(date_token);
-				} else if (month == -1) {
-					month = atoi(date_token);
-				} else {
-					day = atoi(date_token);
-				}
-				date_token = strtok(NULL, "-");
-			}
-			setTime(hours, minutes, 0, day, month, year);
-			t = now();
-			RTC.set(t);
-			setSyncProvider(RTC.get);
-			Serial.println("Manually entered date and time saved!");
-		} else if (WiFi.status() == WL_CONNECTED) {
-			Serial.println("NixieTap is auto and connected, setting time to NTP!");
-			startNTPClient();
-			wifiFirstConnected = false;
-		} else {
-			Serial.println("NixieTap not connected to WiFi, cannot auto sync time via NTP!");
-		}
-		timeRefreshFlag = 0;
-	}
 }
 
 /*                                                           *
@@ -684,11 +492,8 @@ void readButton()
 {
 	configButton = digitalRead(CONFIG_BUTTON);
 	if (configButton) {
+		Serial.println("Button pressed.");
 		buttonCounter++;
-		if (buttonCounter == 5) {
-			buttonCounter = 0;
-			startPortalManually();
-		}
 	}
 }
 
