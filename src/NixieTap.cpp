@@ -210,6 +210,9 @@ void startNTPClient()
 		Serial.println("Failed to set NTP server name!");
 	}
 
+	Serial.print("NTP server set to: ");
+	Serial.println(NTP.getNtpServerName());
+
 	if (!NTP.begin()) {
 		Serial.println("Failed to start NTP client!");
 	}
