@@ -25,11 +25,11 @@ jobs:
         pip install -U platformio
     - name: Build with PlatformIO
       run: |
-        cd firmware && pio run
+        pio run
     - name: Rename firmware file
       if: startsWith(github.ref, 'refs/tags/')
       run: |
-        mv firmware/.pio/build/esp12e/firmware.bin firmware-${{ github.ref_name }}.bin
+        mv .pio/build/esp12e/firmware.bin firmware-${{ github.ref_name }}.bin
     - name: Release
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/')
