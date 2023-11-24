@@ -49,17 +49,11 @@ uint8_t timeRefreshFlag;
 
 const char *NixieTap = "NixieTap";
 
-char cfg_time[6] = "00:00";
-char cfg_date[11] = "1970-01-01";
-char cfg_SSID[50] = "NixieTap";
-char cfg_password[50] = "nixietap";
 char cfg_target_SSID[50] = "\0";
 char cfg_target_pw[50] = "\0";
 char cfg_ntp_server[50] = "time.google.com";
 char cfg_time_zone[50] = "America/New_York";
 uint32_t cfg_ntp_sync_interval = 3671;
-uint8_t cfg_enable_time = 1;
-uint8_t cfg_enable_date = 1;
 uint8_t cfg_manual_time_flag = 1;
 uint8_t cfg_enable_24h = 1;
 
@@ -75,15 +69,11 @@ TimeZone time_zone;
 
 void setup()
 {
-	mem_map["SSID"] = 0;
-	mem_map["password"] = 50;
 	mem_map["target_ssid"] = 100;
 	mem_map["target_pw"] = 150;
 	mem_map["ntp_server"] = 200;
 	mem_map["time_zone"] = 250;
 	mem_map["manual_time_flag"] = 381;
-	mem_map["enable_date"] = 382;
-	mem_map["enable_time"] = 383;
 	mem_map["enable_24h"] = 387;
 	mem_map["ntp_sync_interval"] = 388;
 	mem_map["non_init"] = 500;
@@ -169,18 +159,14 @@ void loop()
 		state = 0;
 
 	// Slot 0 - time
-	if (state == 0 && cfg_enable_time) {
+	if (state == 0) {
 		nixieTap.writeTime(t + offset, dot_state, cfg_enable_24h);
-	} else if (!cfg_enable_time && state == 0)
-		state++;
+	}
 
 	// Slot 1 - date
-	if (state == 1 && cfg_enable_date) {
+	if (state == 1) {
 		nixieTap.writeDate(t + offset, 1);
-	} else if (!cfg_enable_date && state == 1)
-		state++;
-
-	// Here you can add new functions for displaying numbers on NixieTap, just follow the basic writing principle from above.
+	}
 }
 
 void connectWiFi()
@@ -252,17 +238,7 @@ void readParameters()
 {
 	Serial.println("Reading saved parameters from EEPROM.");
 
-	int EEaddress = mem_map["SSID"];
-	EEPROM.get(EEaddress, cfg_SSID);
-	Serial.print("[EEPROM Read] ");
-	Serial.println("SSID: " + (String)cfg_SSID);
-
-	EEaddress = mem_map["password"];
-	EEPROM.get(EEaddress, cfg_password);
-	Serial.print("[EEPROM Read] ");
-	Serial.println("password: " + (String)cfg_password);
-
-	EEaddress = mem_map["target_ssid"];
+	int EEaddress = mem_map["target_ssid"];
 	EEPROM.get(EEaddress, cfg_target_SSID);
 	Serial.print("[EEPROM Read] ");
 	Serial.println("target_ssid: " + (String)cfg_target_SSID);
@@ -286,16 +262,6 @@ void readParameters()
 	EEPROM.get(EEaddress, cfg_manual_time_flag);
 	Serial.print("[EEPROM Read] ");
 	Serial.println("manual_time_flag: " + (String)cfg_manual_time_flag);
-
-	EEaddress = mem_map["enable_date"];
-	EEPROM.get(EEaddress, cfg_enable_date);
-	Serial.print("[EEPROM Read] ");
-	Serial.println("enable_date: " + (String)cfg_enable_date);
-
-	EEaddress = mem_map["enable_time"];
-	EEPROM.get(EEaddress, cfg_enable_time);
-	Serial.print("[EEPROM Read] ");
-	Serial.println("enable_time: " + (String)cfg_enable_time);
 
 	EEaddress = mem_map["enable_24h"];
 	EEPROM.get(EEaddress, cfg_enable_24h);
@@ -430,17 +396,7 @@ void resetEepromToDefault()
 
 	EEPROM.begin(512);
 
-	int EEaddress = mem_map["SSID"];
-	EEPROM.put(EEaddress, "NixieTap");
-	Serial.print("[EEPROM Reset] ");
-	Serial.println("AP mode SSID network name: NixieTap");
-
-	EEaddress = mem_map["password"];
-	EEPROM.put(EEaddress, "NixieTap");
-	Serial.print("[EEPROM Reset] ");
-	Serial.println("AP mode SSID network password: NixieTap");
-
-	EEaddress = mem_map["target_ssid"];
+	int EEaddress = mem_map["target_ssid"];
 	EEPROM.put(EEaddress, "");
 	Serial.print("[EEPROM Reset] ");
 	Serial.println("Clearing station mode SSID network name");
@@ -464,16 +420,6 @@ void resetEepromToDefault()
 	EEPROM.put(EEaddress, 1);
 	Serial.print("[EEPROM Reset] ");
 	Serial.println("manual_time_flag: 1");
-
-	EEaddress = mem_map["enable_date"];
-	EEPROM.put(EEaddress, 1);
-	Serial.print("[EEPROM Reset] ");
-	Serial.println("enable_date: 1");
-
-	EEaddress = mem_map["enable_time"];
-	EEPROM.put(EEaddress, 1);
-	Serial.print("[EEPROM Reset] ");
-	Serial.println("enable_time: 1");
 
 	EEaddress = mem_map["enable_24h"];
 	EEPROM.put(EEaddress, 1);
