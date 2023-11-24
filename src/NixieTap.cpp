@@ -18,6 +18,7 @@ IRAM_ATTR void scrollDots(); // Interrupt function for scrolling dots.
 void disableSecDot();
 void enableSecDot();
 void firstRunInit();
+void parseSerialSet(String);
 void printTime(time_t);
 void processSyncEvent(NTPSyncEvent_t ntpEvent);
 void readAndParseSerial();
@@ -569,16 +570,41 @@ void readAndParseSerial()
 				readParameters();
 			} else if (serialCommand == "restart") {
 				ESP.restart();
+			} else if (serialCommand == "set") {
+				Serial.println("Available 'set' commands: time.");
+			} else if (serialCommand.startsWith("set ")) {
+				parseSerialSet(serialCommand.substring(strlen("set ")));
 			} else if (serialCommand == "time") {
 				printTime(now());
 			} else if (serialCommand == "help") {
-				Serial.println("Available commands: init, read, restart, time, help.");
+				Serial.println("Available commands: init, read, restart, set, time, help.");
 			} else {
-				Serial.println("Unknown command.");
+				Serial.print("Unknown command: ");
+				Serial.println(serialCommand);
 			}
 
 			serialCommand = "";
 		}
+	}
+}
+
+void parseSerialSet(String s)
+{
+	if (s.startsWith("time ")) {
+		String s_time = s.substring(strlen("time "));
+		auto odt = OffsetDateTime::forDateString(s_time.c_str());
+		if (!odt.isError()) {
+			time_t odt_unix = odt.toUnixSeconds64();
+			setTime(odt_unix);
+			RTC.set(odt_unix);
+			printTime(odt_unix);
+		} else {
+			Serial.print("Unable to parse timestamp: ");
+			Serial.println(s_time);
+		}
+	} else {
+		Serial.print("Unable to parse 'set' command: ");
+		Serial.println(s);
 	}
 }
 
