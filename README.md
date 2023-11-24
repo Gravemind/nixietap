@@ -1,3 +1,0 @@
-# nixietap
-
-Minimalistic nixie display
