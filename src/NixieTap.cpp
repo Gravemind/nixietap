@@ -28,7 +28,7 @@ void parseSerialSet(String);
 void printTime(time_t);
 void processSyncEvent(NTPSyncEvent_t);
 void readAndParseSerial();
-void readButton();
+void readConfigButton();
 void readParameters();
 void resetEepromToDefault();
 void setSystemTimeFromRTC();
@@ -133,30 +133,14 @@ void setup()
 
 void loop()
 {
-	readAndParseSerial();
-	readButton();
-
-	current_time = now();
-
-	// Print the current time if the touch sensor was pressed.
-	if (touch_button_pressed) {
-		touch_button_pressed = false;
-		printTime(current_time);
-	}
-
-	// Start the NTP client if enabled and connected to WiFi.
-	if (cfg_ntp_enabled == 1 && wifiFirstConnected && WiFi.status() == WL_CONNECTED) {
-		startNTPClient();
-		wifiFirstConnected = false;
-	}
-
 	// Handle an event triggered from the NTP client.
 	if (syncEventTriggered) {
 		processSyncEvent(ntpEvent);
 		syncEventTriggered = false;
 	}
 
-	// Calculate the offset from UTC at the current instant.
+	// Get the current time and calculate its offset from UTC.
+	current_time = now();
 	int32_t offset = ZonedDateTime::forUnixSeconds64(current_time, time_zone).timeOffset().toSeconds();
 
 	// State machine.
@@ -172,6 +156,24 @@ void loop()
 	// Slot 1 - date
 	if (state == 1) {
 		nixieTap.writeDate(current_time + offset, 1);
+	}
+
+	// Print the current time if the touch sensor was pressed.
+	if (touch_button_pressed) {
+		touch_button_pressed = false;
+		printTime(current_time);
+	}
+
+	// Handle serial interface input.
+	readAndParseSerial();
+
+	// Handle config button presses.
+	readConfigButton();
+
+	// Start the NTP client if enabled and connected to WiFi.
+	if (cfg_ntp_enabled == 1 && wifiFirstConnected && WiFi.status() == WL_CONNECTED) {
+		startNTPClient();
+		wifiFirstConnected = false;
 	}
 }
 
@@ -573,7 +575,7 @@ void resetEepromToDefault()
 	EEPROM.commit();
 }
 
-void readButton()
+void readConfigButton()
 {
 	configButton = digitalRead(CONFIG_BUTTON);
 	if (configButton) {
