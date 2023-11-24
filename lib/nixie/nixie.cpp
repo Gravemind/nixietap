@@ -104,7 +104,11 @@ void Nixie::writeTime(time_t local, bool dot_state, bool timeFormat)
  *                                                         */
 void Nixie::writeDate(time_t local, bool dot_state)
 {
-	write(day(local) / 10, day(local) % 10, month(local) / 10, month(local) % 10, dot_state * 0b1000);
+	write(month(local) / 10,
+	      month(local) % 10,
+	      day(local) / 10,
+	      day(local) % 10,
+	      dot_state * 0b1000);
 	k = 0; // Reset the number position in the writeNumber function.
 }
 
