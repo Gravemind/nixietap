@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
-#include <ESP8266WiFiMulti.h>
 #include <AceTime.h>
 #include <nixie.h>
 #include <BQ32000RTC.h>
@@ -20,6 +19,7 @@ IRAM_ATTR void touchButtonPressed();
 // Interrupt function for scrolling dots.
 IRAM_ATTR void scrollDots();
 
+const char *wifiDisconnectReasonStr(const enum WiFiDisconnectReason);
 void connectWiFi();
 void disableSecDot();
 void enableSecDot();
@@ -32,6 +32,7 @@ void readButton();
 void readParameters();
 void resetEepromToDefault();
 void setSystemTimeFromRTC();
+void setupWiFi();
 void startNTPClient();
 
 volatile bool dot_state = LOW;
@@ -41,17 +42,13 @@ bool wifiFirstConnected = true;
 bool syncEventTriggered = false;
 
 time_t t;
-time_t last_wifi_connect_attempt;
 
 uint8_t configButton = 0;
 uint32_t buttonCounter;
 volatile uint8_t state = 0, dotPosition = 0b10;
-ESP8266WiFiMulti wifiMulti;
 NTPSyncEvent_t ntpEvent;
 String serialCommand = "";
 Ticker movingDot;
-
-const char *NixieTap = "NixieTap";
 
 char cfg_ssid[50] = "\0";
 char cfg_password[50] = "\0";
@@ -90,11 +87,6 @@ void setup()
 {
 	Serial.println("\33[2K\r\nNixie Tap is booting!");
 
-	// Set WiFi station mode settings.
-	WiFi.mode(WIFI_STA);
-	WiFi.hostname(NixieTap);
-	wifiMulti.addAP(cfg_ssid, cfg_password);
-
 	// Progress bar: 25%.
 	nixieTap.write(10, 10, 10, 10, 0b10);
 
@@ -109,6 +101,10 @@ void setup()
 
 	// Read all stored parameters from EEPROM.
 	readParameters();
+
+	// Setup WiFi station mode settings and begin connection attempt.
+	setupWiFi();
+	connectWiFi();
 
 	// Load time zone.
 	time_zone = zoneManager.createForZoneName(cfg_time_zone);
@@ -131,8 +127,6 @@ void setup()
 
 	enableSecDot();
 
-	connectWiFi();
-
 	// Progress bar: 100%.
 	nixieTap.write(10, 10, 10, 10, 0b11110);
 }
@@ -148,11 +142,6 @@ void loop()
 	if (touch_button_pressed) {
 		touch_button_pressed = false;
 		printTime(t);
-	}
-
-	// Check if we should attempt to reconnect to WiFi.
-	if (WiFi.status() != WL_CONNECTED && t - last_wifi_connect_attempt > 30) {
-		connectWiFi();
 	}
 
 	// Start the NTP client if enabled and connected to WiFi.
@@ -186,19 +175,85 @@ void loop()
 	}
 }
 
+void setupWiFi()
+{
+	WiFi.mode(WIFI_STA);
+	WiFi.hostname("NixieTap");
+	WiFi.persistent(false);
+	WiFi.setAutoReconnect(true);
+
+	static WiFiEventHandler eh_sta_dhcp_timeout =
+		WiFi.onStationModeDHCPTimeout([](void)
+	{
+		Serial.println("[Wi-Fi] DHCP timeout");
+	});
+
+	static WiFiEventHandler eh_sta_got_ip =
+		WiFi.onStationModeGotIP([](const WiFiEventStationModeGotIP& event)
+	{
+		Serial.print("[Wi-Fi] DHCP succeeded, IP address ");
+		Serial.print(WiFi.localIP());
+		Serial.print(", subnet mask ");
+		Serial.print(WiFi.subnetMask());
+		Serial.print(", gateway ");
+		Serial.print(WiFi.gatewayIP());
+		Serial.print(", DNS ");
+		Serial.println(WiFi.dnsIP());
+	});
+
+	static WiFiEventHandler eh_sta_auth_mode_changed =
+		WiFi.onStationModeAuthModeChanged([](const WiFiEventStationModeAuthModeChanged& event)
+	{
+		static const char * const AUTH_MODE_NAMES[] {
+			"AUTH_OPEN",
+			"AUTH_WEP",
+			"AUTH_WPA_PSK",
+			"AUTH_WPA2_PSK",
+			"AUTH_WPA_WPA2_PSK",
+			"AUTH_MAX"
+		};
+		Serial.print("[Wi-Fi] Authentication mode changed, old mode ");
+		Serial.print(AUTH_MODE_NAMES[event.oldMode]);
+		Serial.print(", new mode ");
+		Serial.println(AUTH_MODE_NAMES[event.newMode]);
+	});
+
+	static WiFiEventHandler eh_sta_connected =
+		WiFi.onStationModeConnected([](const WiFiEventStationModeConnected& event)
+	{
+		Serial.print("[Wi-Fi] Station connected, SSID \"");
+		Serial.print(WiFi.SSID());
+		Serial.print("\", channel ");
+		Serial.print(event.channel);
+		Serial.print(", RSSI ");
+		Serial.print(WiFi.RSSI());
+		Serial.print(" dBm, BSSID ");
+		Serial.println(WiFi.BSSIDstr());
+	});
+
+	static WiFiEventHandler eh_sta_disconnected =
+		WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected& event)
+	{
+		Serial.print("[Wi-Fi] Station disconnected, reason: ");
+		Serial.print(wifiDisconnectReasonStr(event.reason));
+		Serial.print(" (");
+		Serial.print((unsigned)event.reason);
+		Serial.println(")");
+	});
+}
+
 void connectWiFi()
 {
-	if (cfg_ssid[0] != '\0' && cfg_password[0] != '\0') {
-		Serial.print("Connecting to Wi-Fi access point: ");
-		Serial.println(cfg_ssid);
+	WiFi.disconnect();
 
-		if (wifiMulti.run(5000 /* connect timeout */) == WL_CONNECTED) {
-			Serial.print("Connected, IP address: ");
-			Serial.println(WiFi.localIP());
-		}
+	if (cfg_ssid[0] == '\0' || cfg_password[0] == '\0') {
+		return;
 	}
 
-	last_wifi_connect_attempt = now();
+	WiFi.begin(cfg_ssid, cfg_password);
+
+	Serial.print("[Wi-Fi] Connecting to access point: ");
+	Serial.println(cfg_ssid);
 }
 
 void setSystemTimeFromRTC()
@@ -396,12 +451,18 @@ void parseSerialSet(String s)
 		Serial.print("ssid: ");
 		Serial.println(cfg_ssid);
 		EEPROM.put(EEPROM_ADDR__SSID, cfg_ssid);
+
+		// Restart WiFi connection because the SSID has changed.
+		connectWiFi();
 	} else if (s.startsWith("password ")) {
 		strcpy(cfg_password, s.substring(strlen("password ")).c_str());
 		Serial.print("[EEPROM Write] ");
 		Serial.print("password: ");
 		Serial.println(cfg_password);
 		EEPROM.put(EEPROM_ADDR__PASSWORD, cfg_password);
+
+		// Restart WiFi connection because the password has changed.
+		connectWiFi();
 	} else if (s.startsWith("time ")) {
 		String s_time = s.substring(strlen("time "));
 		auto odt = OffsetDateTime::forDateString(s_time.c_str());
@@ -529,5 +590,41 @@ void firstRunInit()
 	if (magic != EEPROM_MAGIC) {
 		Serial.println("EEPROM magic value mismatch.");
 		resetEepromToDefault();
+	}
+}
+
+const char *wifiDisconnectReasonStr(const enum WiFiDisconnectReason reason)
+{
+	switch (reason) {
+	case WIFI_DISCONNECT_REASON_UNSPECIFIED: return "WIFI_DISCONNECT_REASON_UNSPECIFIED";
+	case WIFI_DISCONNECT_REASON_AUTH_EXPIRE: return "WIFI_DISCONNECT_REASON_AUTH_EXPIRE";
+	case WIFI_DISCONNECT_REASON_AUTH_LEAVE: return "WIFI_DISCONNECT_REASON_AUTH_LEAVE";
+	case WIFI_DISCONNECT_REASON_ASSOC_EXPIRE: return "WIFI_DISCONNECT_REASON_ASSOC_EXPIRE";
+	case WIFI_DISCONNECT_REASON_ASSOC_TOOMANY: return "WIFI_DISCONNECT_REASON_ASSOC_TOOMANY";
+	case WIFI_DISCONNECT_REASON_NOT_AUTHED: return "WIFI_DISCONNECT_REASON_NOT_AUTHED";
+	case WIFI_DISCONNECT_REASON_NOT_ASSOCED: return "WIFI_DISCONNECT_REASON_NOT_ASSOCED";
+	case WIFI_DISCONNECT_REASON_ASSOC_LEAVE: return "WIFI_DISCONNECT_REASON_ASSOC_LEAVE";
+	case WIFI_DISCONNECT_REASON_ASSOC_NOT_AUTHED: return "WIFI_DISCONNECT_REASON_ASSOC_NOT_AUTHED";
+	case WIFI_DISCONNECT_REASON_DISASSOC_PWRCAP_BAD: return "WIFI_DISCONNECT_REASON_DISASSOC_PWRCAP_BAD";
+	case WIFI_DISCONNECT_REASON_DISASSOC_SUPCHAN_BAD: return "WIFI_DISCONNECT_REASON_DISASSOC_SUPCHAN_BAD";
+	case WIFI_DISCONNECT_REASON_IE_INVALID: return "WIFI_DISCONNECT_REASON_IE_INVALID";
+	case WIFI_DISCONNECT_REASON_MIC_FAILURE: return "WIFI_DISCONNECT_REASON_MIC_FAILURE";
+	case WIFI_DISCONNECT_REASON_4WAY_HANDSHAKE_TIMEOUT: return "WIFI_DISCONNECT_REASON_4WAY_HANDSHAKE_TIMEOUT";
+	case WIFI_DISCONNECT_REASON_GROUP_KEY_UPDATE_TIMEOUT: return "WIFI_DISCONNECT_REASON_GROUP_KEY_UPDATE_TIMEOUT";
+	case WIFI_DISCONNECT_REASON_IE_IN_4WAY_DIFFERS: return "WIFI_DISCONNECT_REASON_IE_IN_4WAY_DIFFERS";
+	case WIFI_DISCONNECT_REASON_GROUP_CIPHER_INVALID: return "WIFI_DISCONNECT_REASON_GROUP_CIPHER_INVALID";
+	case WIFI_DISCONNECT_REASON_PAIRWISE_CIPHER_INVALID: return "WIFI_DISCONNECT_REASON_PAIRWISE_CIPHER_INVALID";
+	case WIFI_DISCONNECT_REASON_AKMP_INVALID: return "WIFI_DISCONNECT_REASON_AKMP_INVALID";
+	case WIFI_DISCONNECT_REASON_UNSUPP_RSN_IE_VERSION: return "WIFI_DISCONNECT_REASON_UNSUPP_RSN_IE_VERSION";
+	case WIFI_DISCONNECT_REASON_INVALID_RSN_IE_CAP: return "WIFI_DISCONNECT_REASON_INVALID_RSN_IE_CAP";
+	case WIFI_DISCONNECT_REASON_802_1X_AUTH_FAILED: return "WIFI_DISCONNECT_REASON_802_1X_AUTH_FAILED";
+	case WIFI_DISCONNECT_REASON_CIPHER_SUITE_REJECTED: return "WIFI_DISCONNECT_REASON_CIPHER_SUITE_REJECTED";
+	case WIFI_DISCONNECT_REASON_BEACON_TIMEOUT: return "WIFI_DISCONNECT_REASON_BEACON_TIMEOUT";
+	case WIFI_DISCONNECT_REASON_NO_AP_FOUND: return "WIFI_DISCONNECT_REASON_NO_AP_FOUND";
+	case WIFI_DISCONNECT_REASON_AUTH_FAIL: return "WIFI_DISCONNECT_REASON_AUTH_FAIL";
+	case WIFI_DISCONNECT_REASON_ASSOC_FAIL: return "WIFI_DISCONNECT_REASON_ASSOC_FAIL";
+	case WIFI_DISCONNECT_REASON_HANDSHAKE_TIMEOUT: return "WIFI_DISCONNECT_REASON_HANDSHAKE_TIMEOUT";
+	default:
+		return "Unknown";
 	}
 }
