@@ -82,7 +82,7 @@ TimeZone time_zone;
 
 void setup()
 {
-	Serial.println("\r\n\r\n\r\nNixie Tap is booting!");
+	Serial.println("\33[2K\r\nNixie Tap is booting!");
 
 	// Set WiFi station mode settings.
 	WiFi.mode(WIFI_STA);
