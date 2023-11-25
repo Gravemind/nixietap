@@ -80,8 +80,7 @@ bool BQ32000RTC::write(tmElements_t &tm)
 
 void BQ32000RTC::setIRQ(uint8_t state)
 {
-	/* Set IRQ square wave output state: 0=disabled, 1=1Hz, 2=512Hz.
-     */
+	/* Set IRQ square wave output state: 0=disabled, 1=1Hz, 2=512Hz. */
 	uint8_t value;
 	if (state) {
 		// Setting the frequency is a bit complicated on the BQ32000:
@@ -100,9 +99,8 @@ void BQ32000RTC::setIRQ(uint8_t state)
 
 void BQ32000RTC::setIRQLevel(uint8_t level)
 {
-	/* Set IRQ output level when IRQ square wave output is disabled to
-     * LOW or HIGH.
-     */
+	/* Set IRQ output level when IRQ square wave output is disabled to LOW
+	 * or HIGH. */
 	uint8_t value;
 	// The IRQ active level bit is in the same register as the calibration
 	// settings, so we preserve its current state:
@@ -113,9 +111,10 @@ void BQ32000RTC::setIRQLevel(uint8_t level)
 
 void BQ32000RTC::setCalibration(int8_t value)
 {
-	/* Sets the calibration value to given value in the range -31 - 31, which
-     * corresponds to -126ppm - +63ppm; see table 13 in th BQ32000 datasheet.
-     */
+	/* Sets the calibration value to given value in the range -31 - 31,
+	 * which corresponds to -126ppm - +63ppm; see table 13 in th BQ32000
+	 * datasheet.
+	 */
 	uint8_t val;
 	if (value > 31)
 		value = 31;
@@ -128,14 +127,16 @@ void BQ32000RTC::setCalibration(int8_t value)
 
 void BQ32000RTC::setCharger(int state)
 {
-	/* If using a super capacitor instead of a battery for backup power, use this
-     * method to set the state of the trickle charger: 0=disabled, 1=low-voltage
-     * charge, 2=high-voltage charge. In low-voltage charge mode, the super cap is
-     * charged through a diode with a voltage drop of about 0.5V, so it will charge
-     * up to VCC-0.5V. In high-voltage charge mode the diode is bypassed and the super
-     * cap will be charged up to VCC (make sure the charge voltage does not exceed your
-     * super cap's voltage rating!!).
-     */
+	/* If using a super capacitor instead of a battery for backup power,
+	 * use this method to set the state of the trickle charger: 0=disabled,
+	 * 1=low-voltage charge, 2=high-voltage charge. In low-voltage charge
+	 * mode, the super cap is charged through a diode with a voltage drop
+	 * of about 0.5V, so it will charge up to VCC-0.5V. In high-voltage
+	 * charge mode the diode is bypassed and the super cap will be charged
+	 * up to VCC (make sure the charge voltage does not exceed your super
+	 * cap's voltage rating!!).
+	 */
+
 	// First disable charger regardless of state (prevents it from
 	// possible starting up in the high voltage mode when the low
 	// voltage mode is requested):
@@ -155,8 +156,7 @@ void BQ32000RTC::setCharger(int state)
 
 uint8_t BQ32000RTC::readRegister(uint8_t address)
 {
-	/* Read and return the value in the register at the given address.
-     */
+	/* Read and return the value in the register at the given address. */
 	Wire.beginTransmission(BQ32000_ADDRESS);
 	Wire.write((byte)address);
 	Wire.endTransmission();
@@ -167,8 +167,7 @@ uint8_t BQ32000RTC::readRegister(uint8_t address)
 
 void BQ32000RTC::writeRegister(uint8_t address, uint8_t value)
 {
-	/* Write the given value to the register at the given address.
-     */
+	/* Write the given value to the register at the given address. */
 	Wire.beginTransmission(BQ32000_ADDRESS);
 	Wire.write(address);
 	Wire.write(value);
