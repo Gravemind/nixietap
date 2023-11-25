@@ -6,7 +6,6 @@
 #include <NtpClientLib.h>
 #include <TimeLib.h>
 #include <EEPROM.h>
-#include <Ticker.h>
 
 using namespace ace_time;
 
@@ -16,12 +15,8 @@ IRAM_ATTR void irq_1Hz_int();
 // Interrupt function when button is pressed.
 IRAM_ATTR void touchButtonPressed();
 
-// Interrupt function for scrolling dots.
-IRAM_ATTR void scrollDots();
-
 const char *wifiDisconnectReasonStr(const enum WiFiDisconnectReason);
 void connectWiFi();
-void disableSecDot();
 void enableSecDot();
 void firstRunInit();
 void parseSerialSet(String);
@@ -49,7 +44,6 @@ uint32_t buttonCounter;
 volatile uint8_t state = 0, dotPosition = 0b10;
 NTPSyncEvent_t ntpEvent;
 String serialCommand = "";
-Ticker movingDot;
 
 char cfg_ssid[50] = "\0";
 char cfg_password[50] = "\0";
@@ -327,31 +321,6 @@ void enableSecDot()
 		secDotDef = true;
 		stopDef = false;
 	}
-}
-
-/*
- * Disable the dots function on nixie display.
- */
-void disableSecDot()
-{
-	if (stopDef == false) {
-		detachInterrupt(RTC_IRQ_PIN);
-		RTC.setIRQ(0); // Configures the interrupt from RTC.
-		dotPosition = 0b10; // Restast dot position.
-		stopDef = true;
-		secDotDef = false;
-	}
-}
-
-/*
- * An interrupt function that changes the state and position of the dots on the display.
- */
-void scrollDots()
-{
-	if (dotPosition == 0b100000)
-		dotPosition = 0b10;
-	nixieTap.write(11, 11, 11, 11, dotPosition);
-	dotPosition = dotPosition << 1;
 }
 
 /*
