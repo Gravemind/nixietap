@@ -25,6 +25,7 @@ void disableSecDot();
 void enableSecDot();
 void firstRunInit();
 void parseSerialSet(String);
+void printESPInfo();
 void printTime(time_t);
 void processSyncEvent(NTPSyncEvent_t);
 void readAndParseSerial();
@@ -371,7 +372,9 @@ void readAndParseSerial()
 		if (serialCommand.endsWith("\r")) {
 			serialCommand.trim();
 
-			if (serialCommand == "init") {
+			if (serialCommand == "espinfo") {
+				printESPInfo();
+			} else if (serialCommand == "init") {
 				resetEepromToDefault();
 			} else if (serialCommand == "read") {
 				readParameters();
@@ -397,6 +400,7 @@ void readAndParseSerial()
 				Serial.println("[EEPROM Commit] Writing settings to non-volatile memory.");
 			} else if (serialCommand == "help") {
 				Serial.println("Available commands: "
+					       "espinfo, "
 					       "init, "
 					       "read, "
 					       "restart, "
@@ -483,6 +487,63 @@ void parseSerialSet(String s)
 		Serial.print("Unable to parse 'set' command: ");
 		Serial.println(s);
 	}
+}
+
+void printESPInfo()
+{
+	Serial.print("[ESP] Boot mode: ");
+	Serial.println(ESP.getBootMode());
+
+	Serial.print("[ESP] Boot version: ");
+	Serial.println(ESP.getBootVersion());
+
+	Serial.print("[ESP] Reset reason: ");
+	Serial.println(ESP.getResetReason());
+
+	Serial.print("[ESP] Reset info: ");
+	Serial.println(ESP.getResetInfo());
+
+	Serial.print("[ESP] Free heap: ");
+	Serial.println(ESP.getFreeHeap());
+
+	Serial.print("[ESP] Heap fragmentation: ");
+	Serial.println(ESP.getHeapFragmentation());
+
+	Serial.print("[ESP] Max free block size: ");
+	Serial.println(ESP.getMaxFreeBlockSize());
+
+	Serial.print("[ESP] Chip ID: ");
+	Serial.println(ESP.getChipId());
+
+	Serial.print("[ESP] Core version: ");
+	Serial.println(ESP.getCoreVersion());
+
+	Serial.print("[ESP] Full version: ");
+	Serial.println(ESP.getFullVersion());
+
+	Serial.print("[ESP] SDK version: ");
+	Serial.println(ESP.getSdkVersion());
+
+	Serial.print("[ESP] CPU frequency MHz: ");
+	Serial.println(ESP.getCpuFreqMHz());
+
+	Serial.print("[ESP] Sketch size: ");
+	Serial.println(ESP.getSketchSize());
+
+	Serial.print("[ESP] Free sketch space: ");
+	Serial.println(ESP.getFreeSketchSpace());
+
+	Serial.print("[ESP] Sketch MD5: ");
+	Serial.println(ESP.getSketchMD5());
+
+	Serial.print("[ESP] Flash chip ID: ");
+	Serial.println(ESP.getFlashChipId());
+
+	Serial.print("[ESP] Flash chip size: ");
+	Serial.println(ESP.getFlashChipSize());
+
+	Serial.print("[ESP] Flash chip speed: ");
+	Serial.println(ESP.getFlashChipSpeed());
 }
 
 void printTime(time_t t)
