@@ -30,6 +30,7 @@ void resetEepromToDefault();
 void setSystemTimeFromRTC();
 void setupWiFi();
 void startNTPClient();
+void stopNTPClient();
 
 volatile bool dot_state = LOW;
 volatile bool touch_button_pressed = false;
@@ -234,11 +235,8 @@ void setupWiFi()
 		Serial.print((unsigned)event.reason);
 		Serial.println(")");
 
-		if (ntpInitialized) {
-			Serial.println("[NTP] Stopping NTP client.");
-			NTP.stop();
-			ntpInitialized = false;
-		}
+		// Stop the NTP client if it's running.
+		stopNTPClient();
 	});
 }
 
@@ -289,6 +287,15 @@ void startNTPClient()
 		ntpInitialized = true;
 	} else {
 		Serial.println("[NTP] Failed to start NTP client!");
+	}
+}
+
+void stopNTPClient()
+{
+	if (ntpInitialized) {
+		Serial.println("[NTP] Stopping NTP client.");
+		NTP.stop();
+		ntpInitialized = false;
 	}
 }
 
@@ -418,6 +425,13 @@ void parseSerialSet(String s)
 		Serial.print("ntp_enabled: ");
 		Serial.println(val);
 		EEPROM.put(EEPROM_ADDR__NTP_ENABLED, val);
+
+		// Stop or start the NTP client.
+		if (cfg_ntp_enabled == 0 && ntpInitialized) {
+			stopNTPClient();
+		} else if (cfg_ntp_enabled == 1 && !ntpInitialized) {
+			startNTPClient();
+		}
 	} else if (s.startsWith("ntp_sync_interval ")) {
 		uint32_t val = (uint8_t)atoi(s.substring(strlen("ntp_sync_interval ")).c_str());
 		cfg_ntp_sync_interval = val;
@@ -425,12 +439,22 @@ void parseSerialSet(String s)
 		Serial.print("ntp_sync_interval: ");
 		Serial.println(val);
 		EEPROM.put(EEPROM_ADDR__NTP_SYNC_INTERVAL, val);
+
+		// Restart the NTP client if necessary.
+		if (cfg_ntp_enabled && ntpInitialized) {
+			startNTPClient();
+		}
 	} else if (s.startsWith("ntp_server ")) {
 		strcpy(cfg_ntp_server, s.substring(strlen("ntp_server ")).c_str());
 		Serial.print("[EEPROM Write] ");
 		Serial.print("ntp_server: ");
 		Serial.println(cfg_ntp_server);
 		EEPROM.put(EEPROM_ADDR__NTP_SERVER, cfg_ntp_server);
+
+		// Restart the NTP client if necessary.
+		if (cfg_ntp_enabled && ntpInitialized) {
+			startNTPClient();
+		}
 	} else if (s.startsWith("time_zone ")) {
 		strcpy(cfg_time_zone, s.substring(strlen("time_zone ")).c_str());
 		Serial.print("[EEPROM Write] ");
