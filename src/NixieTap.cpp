@@ -233,6 +233,12 @@ void setupWiFi()
 		Serial.print(" (");
 		Serial.print((unsigned)event.reason);
 		Serial.println(")");
+
+		if (ntpInitialized) {
+			Serial.println("[NTP] Stopping NTP client.");
+			NTP.stop();
+			ntpInitialized = false;
+		}
 	});
 }
 
@@ -265,6 +271,7 @@ void startNTPClient()
 	if (ntpInitialized) {
 		Serial.println("[NTP] Restarting NTP client.");
 		NTP.stop();
+		ntpInitialized = false;
 	} else {
 		Serial.println("[NTP] Starting NTP client.");
 	}
