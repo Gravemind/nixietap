@@ -371,6 +371,7 @@ void readAndParseSerial()
 				readParameters();
 			} else if (serialCommand == "restart") {
 				Serial.println("Nixie Tap is restarting!");
+				EEPROM.commit();
 				ESP.restart();
 			} else if (serialCommand == "set") {
 				Serial.println("Available 'set' commands: "
