@@ -19,6 +19,7 @@ const char *wifiDisconnectReasonStr(const enum WiFiDisconnectReason);
 void connectWiFi();
 void enableSecDot();
 void firstRunInit();
+void loadTimeZone();
 void parseSerialSet(String);
 void printESPInfo();
 void printTime(time_t);
@@ -105,16 +106,7 @@ void setup()
 	connectWiFi();
 
 	// Load time zone.
-	time_zone = zoneManager.createForZoneName(cfg_time_zone);
-	if (time_zone.isError()) {
-		Serial.println("[Time] Unable to load time zone, using UTC.");
-
-		// Use UTC instead.
-		time_zone = zoneManager.createForZoneInfo(&zonedbx::kZoneEtc_UTC);
-		if (time_zone.isError()) {
-			Serial.println("[Time] WARNING! Unable to load UTC time zone.");
-		}
-	}
+	loadTimeZone();
 
 	// Progress bar: 75%.
 	nixieTap.write(10, 10, 10, 10, 0b1110);
@@ -259,6 +251,23 @@ void connectWiFi()
 
 	Serial.print("[Wi-Fi] Connecting to access point: ");
 	Serial.println(cfg_ssid);
+}
+
+void loadTimeZone()
+{
+	time_zone = zoneManager.createForZoneName(cfg_time_zone);
+	if (!time_zone.isError()) {
+		Serial.print("[Time] Loaded time zone: ");
+		Serial.println(cfg_time_zone);
+	} else {
+		Serial.println("[Time] Unable to load time zone, using UTC.");
+
+		// Use UTC instead.
+		time_zone = zoneManager.createForZoneInfo(&zonedbx::kZoneEtc_UTC);
+		if (time_zone.isError()) {
+			Serial.println("[Time] WARNING! Unable to load UTC time zone.");
+		}
+	}
 }
 
 void setSystemTimeFromRTC()
@@ -477,6 +486,9 @@ void parseSerialSet(String s)
 		Serial.print("time_zone: ");
 		Serial.println(cfg_time_zone);
 		EEPROM.put(EEPROM_ADDR__TIME_ZONE, cfg_time_zone);
+
+		// Reload time zone.
+		loadTimeZone();
 	} else if (s.startsWith("ssid ")) {
 		strcpy(cfg_ssid, s.substring(strlen("ssid ")).c_str());
 		Serial.print("[EEPROM Write] ");
