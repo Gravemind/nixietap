@@ -35,10 +35,12 @@ void stopNTPClient();
 volatile bool dot_state = LOW;
 volatile bool touch_button_pressed = false;
 bool stopDef = false, secDotDef = false;
+bool serialTicker = false;
 bool ntpInitialized = false;
 bool syncEventTriggered = false;
 
 time_t current_time;
+time_t last_printed_time;
 
 uint8_t configButton = 0;
 uint32_t buttonCounter;
@@ -157,6 +159,11 @@ void loop()
 	// Print the current time if the touch sensor was pressed.
 	if (touch_button_pressed) {
 		touch_button_pressed = false;
+		printTime(current_time);
+	}
+
+	// Print the current time if the serial ticker is enabled.
+	if (serialTicker) {
 		printTime(current_time);
 	}
 
@@ -385,6 +392,13 @@ void readAndParseSerial()
 					       "time.");
 			} else if (serialCommand.startsWith("set ")) {
 				parseSerialSet(serialCommand.substring(strlen("set ")));
+			} else if (serialCommand == "ticker") {
+				if (serialTicker) {
+					Serial.println("[Time] Turning off serial ticker.");
+				} else {
+					Serial.println("[Time] Turning on serial ticker.");
+				}
+				serialTicker = !serialTicker;
 			} else if (serialCommand == "time") {
 				printTime(now());
 			} else if (serialCommand == "write") {
@@ -397,6 +411,7 @@ void readAndParseSerial()
 					       "read, "
 					       "restart, "
 					       "set, "
+					       "ticker, "
 					       "time, "
 					       "write, "
 					       "help.");
@@ -487,6 +502,7 @@ void parseSerialSet(String s)
 			time_t odt_unix = odt.toUnixSeconds64();
 			setTime(odt_unix);
 			RTC.set(odt_unix);
+			last_printed_time = 0;
 			printTime(odt_unix);
 		} else {
 			Serial.print("Unable to parse timestamp: ");
@@ -557,10 +573,13 @@ void printESPInfo()
 
 void printTime(time_t t)
 {
-	Serial.print("[Time] The time is now: ");
-	ZonedDateTime::forUnixSeconds64(t, time_zone).printTo(Serial);
-	Serial.print(" @ ");
-	Serial.println(t);
+	if (t > last_printed_time) {
+		Serial.print("[Time] The time is now: ");
+		ZonedDateTime::forUnixSeconds64(t, time_zone).printTo(Serial);
+		Serial.print(" @ ");
+		Serial.println(t);
+		last_printed_time = t;
+	}
 }
 
 void readParameters()
