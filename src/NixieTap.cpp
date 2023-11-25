@@ -39,7 +39,7 @@ void startNTPClient();
 volatile bool dot_state = LOW;
 volatile bool touch_button_pressed = false;
 bool stopDef = false, secDotDef = false;
-bool wifiFirstConnected = true;
+bool ntpInitialized = false;
 bool syncEventTriggered = false;
 
 time_t current_time;
@@ -170,12 +170,6 @@ void loop()
 
 	// Handle config button presses.
 	readConfigButton();
-
-	// Start the NTP client if enabled and connected to WiFi.
-	if (cfg_ntp_enabled == 1 && wifiFirstConnected && WiFi.status() == WL_CONNECTED) {
-		startNTPClient();
-		wifiFirstConnected = false;
-	}
 }
 
 void setupWiFi()
@@ -202,6 +196,9 @@ void setupWiFi()
 		Serial.print(WiFi.gatewayIP());
 		Serial.print(", DNS ");
 		Serial.println(WiFi.dnsIP());
+
+		// Start the NTP client if enabled.
+		startNTPClient();
 	});
 
 	static WiFiEventHandler eh_sta_auth_mode_changed =
@@ -267,7 +264,16 @@ void setSystemTimeFromRTC()
 
 void startNTPClient()
 {
-	Serial.println("[NTP] Starting NTP client.");
+	if (cfg_ntp_enabled != 1) {
+		return;
+	}
+
+	if (ntpInitialized) {
+		Serial.println("[NTP] Restarting NTP client.");
+		NTP.stop();
+	} else {
+		Serial.println("[NTP] Starting NTP client.");
+	}
 
 	NTP.onNTPSyncEvent([](NTPSyncEvent_t event) {
 		ntpEvent = event;
@@ -278,7 +284,9 @@ void startNTPClient()
 		Serial.println("[NTP] Failed to set sync interval!");
 	}
 
-	if (!NTP.begin(cfg_ntp_server)) {
+	if (NTP.begin(cfg_ntp_server)) {
+		ntpInitialized = true;
+	} else {
 		Serial.println("[NTP] Failed to start NTP client!");
 	}
 }
