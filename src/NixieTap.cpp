@@ -109,12 +109,12 @@ void setup()
 	// Load time zone.
 	time_zone = zoneManager.createForZoneName(cfg_time_zone);
 	if (time_zone.isError()) {
-		Serial.println("Unable to load time zone, using UTC.");
+		Serial.println("[Time] Unable to load time zone, using UTC.");
 
 		// Use UTC instead.
 		time_zone = zoneManager.createForZoneInfo(&zonedbx::kZoneEtc_UTC);
 		if (time_zone.isError()) {
-			Serial.println("WARNING! Unable to load UTC time zone.");
+			Serial.println("[Time] WARNING! Unable to load UTC time zone.");
 		}
 	}
 
@@ -261,12 +261,12 @@ void connectWiFi()
 void setSystemTimeFromRTC()
 {
 	setTime(RTC.get());
-	Serial.println("System time has been set from the on-board RTC.");
+	Serial.println("[Time] System time has been set from the on-board RTC.");
 }
 
 void startNTPClient()
 {
-	Serial.println("Starting NTP client.");
+	Serial.println("[NTP] Starting NTP client.");
 
 	NTP.onNTPSyncEvent([](NTPSyncEvent_t event) {
 		ntpEvent = event;
@@ -274,26 +274,28 @@ void startNTPClient()
 	});
 
 	if (!NTP.setInterval(cfg_ntp_sync_interval)) {
-		Serial.println("Failed to set NTP sync interval!");
+		Serial.println("[NTP] Failed to set sync interval!");
 	}
 
 	if (!NTP.begin(cfg_ntp_server)) {
-		Serial.println("Failed to start NTP client!");
+		Serial.println("[NTP] Failed to start NTP client!");
 	}
 }
 
 void processSyncEvent(NTPSyncEvent_t ntpEvent)
 {
 	if (ntpEvent < 0) {
-		Serial.print("Time sync error: ");
+		Serial.print("[NTP] Time sync error: ");
 		if (ntpEvent == noResponse) {
 			Serial.println("NTP server not reachable.");
 		} else if (ntpEvent == invalidAddress) {
 			Serial.println("Invalid NTP server address.");
 		} else if (ntpEvent == errorSending) {
-			Serial.println("Error sending request");
+			Serial.println("Error sending request.");
 		} else if (ntpEvent == responseError) {
-			Serial.println("NTP response error");
+			Serial.println("NTP response error.");
+		} else {
+			Serial.println("Unknown event.");
 		}
 	} else {
 		if (ntpEvent == timeSyncd && NTP.SyncStatus()) {
@@ -392,7 +394,7 @@ void readAndParseSerial()
 				printTime(now());
 			} else if (serialCommand == "write") {
 				EEPROM.commit();
-				Serial.println("[EEPROM Commit]");
+				Serial.println("[EEPROM Commit] Writing settings to non-volatile memory.");
 			} else if (serialCommand == "help") {
 				Serial.println("Available commands: "
 					       "init, "
@@ -485,7 +487,7 @@ void parseSerialSet(String s)
 
 void printTime(time_t t)
 {
-	Serial.print("The time is now: ");
+	Serial.print("[Time] The time is now: ");
 	ZonedDateTime::forUnixSeconds64(t, time_zone).printTo(Serial);
 	Serial.print(" @ ");
 	Serial.println(t);
@@ -493,7 +495,7 @@ void printTime(time_t t)
 
 void readParameters()
 {
-	Serial.println("Reading saved parameters from EEPROM...");
+	Serial.println("[EEPROM] Reading settings from non-volatile memory.");
 
 	EEPROM.get(EEPROM_ADDR__24HR_ENABLED, cfg_24hr_enabled);
 	Serial.print("[EEPROM Read] ");
@@ -533,7 +535,7 @@ void readParameters()
 
 void resetEepromToDefault()
 {
-	Serial.println("Writing factory defaults to EEPROM...");
+	Serial.println("[EEPROM] Writing defaults to non-volatile memory.");
 
 	EEPROM.begin(512);
 
@@ -590,7 +592,7 @@ void firstRunInit()
 	EEPROM.begin(512);
 	EEPROM.get(EEPROM_ADDR__MAGIC, magic);
 	if (magic != EEPROM_MAGIC) {
-		Serial.println("EEPROM magic value mismatch.");
+		Serial.println("[EEPROM] Magic value mismatch.");
 		resetEepromToDefault();
 	}
 }
