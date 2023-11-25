@@ -1,3 +1,5 @@
+<div align="center"><video src="https://github.com/edmonds/nixietap/assets/202839/14add0cf-b984-4e93-8a2a-114026b00c08"/></div>
+
 This is a replacement firmware for the ESP8266-based [Nixie Tap](https://mladendinic.com/nixietap/) desktop clock which uses Soviet ИН-12Б nixie tube decimal indicators to display the current time and date. The main improvement of this firmware is that it automatically handles DST transitions using the [AceTime](https://github.com/bxparks/AceTime) library, simply by configuring the local time zone into the EEPROM settings.
 
 It has the following changes from the [original firmware](https://github.com/mladendinic/nixietap/tree/master/firmware):
