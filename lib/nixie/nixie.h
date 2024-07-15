@@ -19,24 +19,10 @@
 
 class Nixie {
 	// Initialize the display. This function configures pinModes based on .h file.
-	const uint16_t pinmap[11] = {
-		0b0000010000, // 0
-		0b0000100000, // 1
-		0b0001000000, // 2
-		0b0010000000, // 3
-		0b0100000000, // 4
-		0b1000000000, // 5
-		0b0000000001, // 6
-		0b0000000010, // 7
-		0b0000000100, // 8
-		0b0000001000, // 9
-		0b0000000000 // digit off
-	};
 	String oldNumber = "";
 	uint8_t numberArray[100], numIsNeg;
 	int dotPos, numberSize, k = 0;
 	unsigned long previousMillis = 0;
-	uint8_t orderedDigits[10] = { 1, 6, 2, 7, 5, 0, 4, 9, 8, 3 };
 	uint8_t autoPoisonDoneOnMinute = 0;
 	uint8_t oldDigit1, oldDigit2, oldDigit3, oldDigit4;
 	bool animate = false;

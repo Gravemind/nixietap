@@ -1,5 +1,22 @@
 #include "nixie.h"
 
+static const uint8_t orderedDigits[10] = { 1, 6, 2, 7, 5, 0, 4, 9, 8, 3 };
+static const uint8_t digitsOrder[10] = { 5, 0, 2, 9, 6, 4, 1, 3, 8, 7 };
+
+static const uint16_t pinmap[11] = {
+	0b0000010000, // 0
+	0b0000100000, // 1
+	0b0001000000, // 2
+	0b0010000000, // 3
+	0b0100000000, // 4
+	0b1000000000, // 5
+	0b0000000001, // 6
+	0b0000000010, // 7
+	0b0000000100, // 8
+	0b0000001000, // 9
+	0b0000000000 // digit off
+};
+
 Nixie::Nixie()
 {
 	begin();
@@ -212,11 +229,14 @@ void Nixie::writeNumber(String newNumber, unsigned int movingSpeed)
 void Nixie::antiPoison(time_t local, bool timeFormat)
 {
 	uint8_t stopH1 = 0, stopH0 = 0, stopM1 = 0, stopM0 = 0;
-	uint8_t H1 = 0, H0 = 0, M1 = 0, M0 = 0;
-	bool foundH1 = false, foundH0 = false, foundM1 = false, foundM0 = false;
-	uint8_t indexH1 = 0, indexH0 = 0, indexM1 = 0, indexM0 = 0;
-	stopM1 = minute(local) / 10;
+
 	stopM0 = minute(local) % 10;
+	stopM1 = minute(local) / 10;
+
+	if (stopM0 == autoPoisonDoneOnMinute) {
+		return;
+	}
+	autoPoisonDoneOnMinute = stopM0;
 
 	if (timeFormat) {
 		stopH1 = hour(local) / 10;
@@ -225,6 +245,13 @@ void Nixie::antiPoison(time_t local, bool timeFormat)
 		stopH1 = hourFormat12(local) / 10;
 		stopH0 = hourFormat12(local) % 10;
 	}
+
+#if 0
+	// Animate one digit at a time
+
+	uint8_t H1 = 0, H0 = 0, M1 = 0, M0 = 0;
+	bool foundH1 = false, foundH0 = false, foundM1 = false, foundM0 = false;
+	uint8_t indexH1 = 0, indexH0 = 0, indexM1 = 0, indexM0 = 0;
 
 	for (uint8_t i = 0; i < 10; i++)
 		if (orderedDigits[i] == stopM1)
@@ -239,9 +266,7 @@ void Nixie::antiPoison(time_t local, bool timeFormat)
 		if (orderedDigits[i] == stopH0)
 			indexH0 = i;
 
-	if (stopM0 != autoPoisonDoneOnMinute) {
-		autoPoisonDoneOnMinute = stopM0;
-
+	{
 		//		for(uint8_t slotCount=0; slotCount<4; slotCount++) {
 		//
 		//			for(uint8_t j=0; j<10; j++) {
@@ -358,6 +383,144 @@ void Nixie::antiPoison(time_t local, bool timeFormat)
 			}
 		}
 	}
+
+#elif 0
+	// Animate one digit at time, implementation v2
+
+	uint8_t orders[4] = { digitsOrder[stopH1], digitsOrder[stopH0], digitsOrder[stopM1], digitsOrder[stopM0] };
+
+	for (uint8_t digit = 0; digit < 4; digit++) {
+		uint8_t stop = orders[digit];
+		orders[digit] = 0;
+		while (orders[digit] < 9) {
+			orders[digit] += 1;
+			write(
+				orderedDigits[orders[0]],
+				orderedDigits[orders[1]],
+				orderedDigits[orders[2]],
+				orderedDigits[orders[3]],
+				1 << (digit + 1));
+			delay(25);
+		}
+		while (orders[digit] > stop) {
+			orders[digit] -= 1;
+			write(
+				orderedDigits[orders[0]],
+				orderedDigits[orders[1]],
+				orderedDigits[orders[2]],
+				orderedDigits[orders[3]],
+				1 << (digit + 1));
+			delay(25);
+		}
+	}
+
+#elif 0
+	// Animate all digits at the same time
+	// from back to front, then front to correct digit.
+
+	uint8_t stop[4] = { digitsOrder[stopH1], digitsOrder[stopH0], digitsOrder[stopM1], digitsOrder[stopM0] };
+	uint8_t current[4];
+	for (uint8_t digit = 0; digit < 4; digit++) {
+		current[digit] = stop[digit];
+	}
+	bool done = false;
+
+	int dl = 50;
+
+	// // Descend all from current to 0
+	// done = false;
+	// while (!done) {
+	// 	done = true;
+	// 	for (uint8_t digit = 0; digit < 4; digit++) {
+	// 		if (current[digit] > 0) {
+	// 			current[digit] -= 1;
+	// 			done = false;
+	// 		}
+	// 	}
+	// 	write(
+	// 		orderedDigits[current[0]],
+	// 		orderedDigits[current[1]],
+	// 		orderedDigits[current[2]],
+	// 		orderedDigits[current[3]],
+	// 		0b00000
+	// 	);
+	// 	delay(dl);
+	// }
+
+	// Ascend all to top
+	for (uint8_t i = 0; i < 10; ++i) {
+		write(
+			orderedDigits[i],
+			orderedDigits[i],
+			orderedDigits[i],
+			orderedDigits[i],
+			0b11110
+		);
+		delay(dl);
+	}
+
+	// Descend all to current
+	for (uint8_t digit = 0; digit < 4; digit++) {
+		current[digit] = 9;
+	}
+	done = false;
+	while (!done) {
+		done = true;
+		for (uint8_t digit = 0; digit < 4; digit++) {
+			if (current[digit] > stop[digit]) {
+				current[digit] -= 1;
+				done = false;
+			}
+		}
+		write(
+			orderedDigits[current[0]],
+			orderedDigits[current[1]],
+			orderedDigits[current[2]],
+			orderedDigits[current[3]],
+			0b00000
+		);
+		delay(dl);
+	}
+
+#elif 1
+	// Animate all digits at same time
+	// from back to front multiple time, starting and ending to correct digit.
+
+	uint8_t current[4] = { digitsOrder[stopH1], digitsOrder[stopH0], digitsOrder[stopM1], digitsOrder[stopM0] };
+
+	// Show digits individually for 50ms
+	uint8_t repeat = 2;
+	int dl = 50;
+	int dl2 = 0;
+
+	// Fast switching between digits: blurs all digits
+	// uint8_t repeat = 50;
+	// int dl = 1;
+	// int dl2 = 10; // Display current digit slightly longer to make it time readable
+
+	for (uint16_t rep = 0; rep < repeat; rep++) {
+		for (uint16_t i = 0; i < 10; i++) {
+			for (uint8_t digit = 0; digit < 4; digit++) {
+				current[digit] += 1;
+				if (current[digit] == 10) {
+					current[digit] = 0;
+				}
+			}
+			write(
+				orderedDigits[current[0]],
+				orderedDigits[current[1]],
+				orderedDigits[current[2]],
+				orderedDigits[current[3]],
+				0b00000
+			);
+			delay(dl);
+		}
+		if (dl2 > 0) {
+			delay(dl2);
+		}
+	}
+
+#endif
 }
 
 void Nixie::setAnimation(bool animate)
@@ -373,7 +536,7 @@ void Nixie::write(uint8_t digit1, uint8_t digit2, uint8_t digit3, uint8_t digit4
 
 	if (animate) {
 		animate = false;
-		Serial.println("animiramo");
+		// Serial.println("animiramo");
 		for (uint8_t i = 0; i < 10; i++)
 			if (orderedDigits[i] == oldDigit4)
 				indexM1 = i;
