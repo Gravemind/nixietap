@@ -482,7 +482,7 @@ void Nixie::antiPoison(time_t local, bool timeFormat)
 		delay(dl);
 	}
 
-#elif 1
+#elif 0
 	// Animate all digits at same time
 	// from back to front multiple time, starting and ending to correct digit.
 
@@ -490,10 +490,11 @@ void Nixie::antiPoison(time_t local, bool timeFormat)
 
 	// Show digits individually for 50ms
 	uint8_t repeat = 2;
-	int dl = 50;
+	int dl = 25;
 	int dl2 = 0;
 
 	// Fast switching between digits: blurs all digits
+	// TODO: looks good, less distracting, but is it a good anti-poisoning ?
 	// uint8_t repeat = 50;
 	// int dl = 1;
 	// int dl2 = 10; // Display current digit slightly longer to make it time readable
@@ -517,6 +518,50 @@ void Nixie::antiPoison(time_t local, bool timeFormat)
 		}
 		if (dl2 > 0) {
 			delay(dl2);
+		}
+	}
+
+#elif 1
+	// Animate all digits at same time
+	// Mix of back and forth
+
+	uint8_t current[4] = { digitsOrder[stopH1], digitsOrder[stopH0], digitsOrder[stopM1], digitsOrder[stopM0] };
+
+	uint8_t repeat = 2;
+	int dl = 25;
+
+	// Choose a starting direction (back to front or front to back) so that
+	// it ends on the longest path for better effect.
+	int8_t dir[4];
+	for (uint8_t digit = 0; digit < 4; digit++) {
+		if (current[digit] <= 5) {
+			dir[digit] = -1;
+		} else {
+			dir[digit] = +1;
+		}
+	}
+
+	uint8_t doti = 2;
+	for (uint16_t rep = 0; rep < repeat; rep++) {
+		for (uint16_t i = 0; i < 18; i++) {
+			for (uint8_t digit = 0; digit < 4; digit++) {
+				uint8_t c = current[digit];
+				if (c == 9) {
+					dir[digit] = -1;
+				} else if (c == 0) {
+					dir[digit] = +1;
+				}
+				current[digit] += dir[digit];
+			}
+			write(
+				orderedDigits[current[0]],
+				orderedDigits[current[1]],
+				orderedDigits[current[2]],
+				orderedDigits[current[3]],
+				1 << (((doti / 4) % 4) + 1)
+			);
+			++doti;
+			delay(dl);
 		}
 	}
 
