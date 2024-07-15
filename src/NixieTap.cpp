@@ -112,6 +112,8 @@ void setup()
 	nixieTap.write(10, 10, 10, 10, 0b1110);
 
 	// Set the system time from the on-board RTC.
+	RTC.begin(D3, D4);
+	RTC.setCharger(2);
 	setSystemTimeFromRTC();
 	printTime(now());
 

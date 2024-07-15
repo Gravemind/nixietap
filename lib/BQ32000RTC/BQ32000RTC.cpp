@@ -8,7 +8,7 @@
 
 BQ32000RTC::BQ32000RTC()
 {
-	begin(D3, D4);
+	// begin(D3, D4);
 }
 
 void BQ32000RTC::begin(uint8_t sda, uint8_t scl)
