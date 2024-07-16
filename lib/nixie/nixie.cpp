@@ -29,7 +29,7 @@ void Nixie::begin()
 	Serial.begin(115200);
 #endif // DEBUG
 	// Turn off the Nixie tubes. If this is not called nixies might show some random stuff on startup.
-	write(11, 11, 11, 11, 0);
+	writeLowLevel(10, 10, 10, 10, 0);
 	// Set SPI chip select as output
 	pinMode(SPI_CS, OUTPUT);
 	// Configure the ESP to receive interrupts from a RTC.
