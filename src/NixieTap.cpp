@@ -114,6 +114,10 @@ void setup()
 	// Set the system time from the on-board RTC.
 	RTC.begin(D3, D4);
 	RTC.setCharger(2);
+	// "To ensure that the correct time is read after backup mode, the host
+	// should wait longer than 1 second after the main supply is greater
+	// than 2.8 V and VBACK" -- bq32000
+	delay(1000);
 	setSystemTimeFromRTC();
 	printTime(now());
 
